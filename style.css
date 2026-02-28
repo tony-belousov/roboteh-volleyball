@@ -1,814 +1,927 @@
-/* ================= БАЗОВЫЕ СТИЛИ — тёмная тема, системный шрифт ================= */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Verdana', sans-serif !important;
-    margin: 0;
-    padding: 0;
-    background-color: #1a1a1a;
-    color: #f0f0f0;
-    background-image: 
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size: 30px 30px;
-    overflow: auto;
-    font-size: 14px;
+/* =======================
+   ROBOTEX PWA UI (2026)
+   "дорогая" тёмная glass-тема
+   ======================= */
+
+/* --- Reset / base --- */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body{
+  margin:0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color:#EAF0FF;
+  background:#060A14;
+  overflow:hidden; /* экраны сами скроллятся внутри */
 }
 
-#app {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    min-height: 100vh;
-    width: 100%;
-    padding: 6px;
-    box-sizing: border-box;
-    overflow-y: auto;
+/* фоновая "премиальная" аура */
+body::before{
+  content:"";
+  position:fixed; inset:-20%;
+  background:
+    radial-gradient(900px 600px at 20% 10%, rgba(70, 190, 255, 0.22), transparent 55%),
+    radial-gradient(900px 600px at 80% 30%, rgba(50, 255, 170, 0.18), transparent 60%),
+    radial-gradient(900px 600px at 50% 90%, rgba(130, 90, 255, 0.10), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent 25%, rgba(255,255,255,0.02));
+  filter: blur(0px);
+  pointer-events:none;
+  z-index:-1;
 }
 
-.hidden {
-    visibility: hidden;
-    opacity: 0;
-    pointer-events: none;
-    position: absolute;
-    left: -9999px;
-    top: -9999px;
+/* --- App layout --- */
+#app{
+  height:100dvh;
+  width:100%;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+           max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
 }
 
-.visible {
-    visibility: visible;
-    opacity: 1;
-    pointer-events: auto;
-    position: static;
+/* ВАЖНО: старый .hidden уводил элементы в -9999 и ломал высоту/скролл.
+   Тут делаем нормально. */
+.hidden{ display:none !important; }
+.visible{ display:block; }
+
+/* Все "экраны" */
+.main-menu,
+.score-screen,
+.stats-screen,
+.history-screen,
+.help-screen,
+.schedule-screen,
+.attendance-screen{
+  height:100%;
+  width:100%;
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
 }
 
-/* ================= АНИМАЦИИ ================= */
-@keyframes fadeSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+/* общий контейнер-карта */
+.card{
+  width:min(980px, 100%);
+  margin:0 auto;
+  border-radius:26px;
+  padding:18px;
+  background: rgba(14, 18, 34, 0.64);
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow:
+    0 20px 80px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(14px);
 }
 
-@keyframes pulseGlow {
-    0% { box-shadow: 0 0 5px rgba(100, 150, 255, 0.3); }
-    50% { box-shadow: 0 0 20px rgba(100, 150, 255, 0.6); }
-    100% { box-shadow: 0 0 5px rgba(100, 150, 255, 0.3); }
+/* --- Typography --- */
+h1,h2,h3,h4{ margin:0; }
+.main-menu h1{
+  text-align:center;
+  font-size: clamp(34px, 5vw, 56px);
+  letter-spacing: 0.5px;
+  font-weight: 800;
+  color: rgba(120, 220, 255, 0.95);
+  text-shadow: 0 10px 40px rgba(70,190,255,0.20);
 }
 
-.visible {
-    animation: fadeSlideIn 0.3s ease-out;
+/* --- Buttons / inputs --- */
+button{
+  appearance:none;
+  border:0;
+  cursor:pointer;
+  border-radius: 999px;
+  padding: 14px 18px;
+  font-size: 18px;
+  font-weight: 700;
+  color:#EAF0FF;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    0 10px 30px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: transform .12s ease, filter .12s ease, background .12s ease;
+}
+button:active{ transform: scale(0.985); }
+button:disabled{
+  opacity:0.55;
+  cursor:not-allowed;
+  filter:saturate(0.6);
 }
 
-/* ================= ГЛАВНОЕ МЕНЮ ================= */
-.main-menu {
-    text-align: center;
-    width: 100%;
-    max-width: 90vw;
-    margin-top: 10px;
-}
-
-.main-menu h1 {
-    font-size: 40px;
-    margin: 15px 0;
-    font-weight: bold;
-    color: #ffffff;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    background: linear-gradient(135deg, #fff, #aaccff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.5px;
-}
-
-.main-menu button {
-    font-size: 24px;
-    padding: 14px;
-    margin: 10px 0;
-    width: 90%;
-    background: linear-gradient(145deg, #4a6fa5, #3b5a8a); /* единый цвет */
-    color: white;
-    border: none;
-    border-radius: 40px;
-    cursor: pointer;
-    box-shadow: 0 10px 20px rgba(0, 80, 200, 0.3);
-    transition: all 0.2s ease;
-    border: 1px solid rgba(255,255,255,0.05);
-    backdrop-filter: blur(5px);
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-.main-menu button:hover {
-    background: linear-gradient(145deg, #5a7fb5, #4a6fa5);
-    transform: translateY(-2px);
-    box-shadow: 0 15px 25px rgba(0, 80, 200, 0.4);
-    border-color: rgba(255,255,255,0.1);
-}
-
-.main-menu button:active {
-    transform: translateY(2px);
-    box-shadow: 0 5px 10px rgba(0,0,0,0.3);
-}
-
-/* ================= ВЕДЕНИЕ СЧЁТА ================= */
-.score-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-}
-
-.team-inputs input {
-    font-size: 20px;
-    padding: 10px;
-    width: 90%;
-    margin: 10px 0;
-    border: 2px solid #444;
-    border-radius: 30px;
-    background-color: #2d2d2d;
-    color: #f0f0f0;
-}
-
-.team-inputs button {
-    font-size: 22px;
-    padding: 12px;
-    width: 90%;
-    background-color: #0d3b66;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-}
-
-.score-board {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-    width: 100%;
-}
-
-.team {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-}
-
-.team h3 {
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #ffffff;
-}
-
-.score {
-    font-size: 80px;
-    font-weight: bold;
-    cursor: pointer;
-    margin: 0;
-    user-select: none;
-    color: #ffffff;
-}
-
-.set-score {
-    font-size: 35px;
-    margin-top: 10px;
-    color: #cccccc;
-}
-
-.winner-message {
-    font-size: 80px;
-    font-weight: bold;
-    color: #ffd966;
-    animation: fadeIn 2s ease-in-out;
-    text-align: center;
-    width: 100%;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* ================= СТАТИСТИКА МАТЧА ================= */
-.stats-screen, .history-screen, .help-screen, .schedule-screen, .attendance-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    width: 100%;
-    max-width: 100vw;
-    padding: 10px;
-    box-sizing: border-box;
-    background: rgba(20, 20, 35, 0.7);
-    backdrop-filter: blur(10px);
-    border-radius: 40px;
-    padding: 24px;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-    border: 1px solid rgba(255,255,255,0.05);
-    margin: 10px 0;
-}
-
-.stats-screen h2,
-.history-screen h2,
-.help-screen h2,
-.schedule-screen h2,
-.attendance-screen h2 {
-    font-size: 32px;
-    margin: 10px 0;
-    text-align: center;
-    color: #ffffff;
-    background: linear-gradient(135deg, #fff, #ccc);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: -0.02em;
-}
-
-.match-info,
-.lineup-selection,
-.stats-main,
-.stats-review,
-.help-content,
-.schedule-section,
-.attendance-content {
-    width: 100%;
-    max-width: 100%;
-    text-align: center;
-    background: rgba(30, 30, 45, 0.6);
-    backdrop-filter: blur(5px);
-    border-radius: 28px;
-    padding: 15px;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 10px 20px -10px rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.02);
-    margin-bottom: 20px;
-}
-
-.match-info label {
-    display: block;
-    margin: 12px 0;
-    font-size: 20px;
-    color: #ffffff;
-}
-
-.match-info input,
-.match-info select {
-    font-size: 18px;
-    padding: 8px;
-    margin-left: 8px;
-    width: 70%;
-    border: 2px solid #444;
-    border-radius: 30px;
-    background-color: #3a3a3a;
-    color: #f0f0f0;
-}
-
-/* ================= ВЫБОР СТАРТОВОЙ ШЕСТЁРКИ ================= */
-.lineup-selection {
-    background-color: #2d2d2d;
-}
-
-.players-list {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    max-height: 300px;
-    overflow-y: auto;
-    margin: 15px 0;
-    background-color: #1a1a1a;
-    padding: 8px;
-    border-radius: 20px;
-}
-
-.player-item {
-    font-size: 18px;
-    padding: 10px;
-    background-color: #3a3a3a;
-    border-radius: 25px;
-    cursor: pointer;
-    width: 80%;
-    text-align: center;
-    user-select: none;
-    color: #f0f0f0;
-    border: 1px solid #555;
-}
-
-.player-item.selected {
-    background-color: #0d3b66;
-    color: white;
-    border-color: #1e4f7a;
-}
-
-#confirm-lineup {
-    font-size: 24px;
-    padding: 12px;
-    background-color: #0d3b66;
-    color: white;
-    border: none;
-    border-radius: 30px;
-    cursor: pointer;
-    width: 80%;
-    margin-top: 15px;
-}
-
-#confirm-lineup:disabled {
-    background-color: #555;
-    cursor: not-allowed;
-}
-
-.set-selector {
-    margin: 15px 0;
-    font-size: 26px;
-    cursor: pointer;
-    text-align: center;
-    color: #ffffff;
-}
-
-.set-dropdown {
-    position: absolute;
-    background: #2d2d2d;
-    border: 2px solid #444;
-    border-radius: 15px;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    width: 120px;
-    margin-top: 8px;
-}
-
-.set-option {
-    padding: 8px;
-    font-size: 22px;
-    cursor: pointer;
-    border-bottom: 1px solid #444;
-    color: #f0f0f0;
-}
-
-.set-option:last-child {
-    border-bottom: none;
-}
-
-.set-option:hover {
-    background-color: #0d3b66;
-}
-
-/* ================= ПЛОЩАДКА (ЗОНЫ) ================= */
-.volleyball-court {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    width: 95%;
-    max-width: 500px;
-    margin: 20px auto;
-}
-
-.zone {
-    background: linear-gradient(145deg, #2a2a40, #1f1f30);
-    border-radius: 30px;
-    padding: 20px 8px;
-    cursor: pointer;
-    font-size: 18px;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 90px;
-    box-shadow: 0 8px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
-    word-break: break-word;
-    text-align: center;
-    color: #e0e0e0;
-    border: 1px solid rgba(255,255,255,0.02);
-    transition: all 0.15s;
-}
-
-.zone:hover {
-    background: linear-gradient(145deg, #353550, #28283d);
-    transform: scale(1.02);
-    border-color: rgba(255,255,255,0.1);
-}
-
-.player-selection,
-.action-menu,
-.sub-menu {
-    margin-top: 20px;
-    padding: 15px;
-    background-color: #2d2d2d;
-    border: 2px solid #444;
-    border-radius: 20px;
-    width: 95%;
-    max-width: 90vw;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.7);
-}
-
-.player-selection h3,
-.action-menu h3,
-.sub-menu h4 {
-    font-size: 24px;
-    margin-bottom: 12px;
-    color: #ffffff;
-}
-
-.player-selection select,
-.action-btn,
-.sub-btn,
-.change-player-btn {
-    width: 100%;
-    padding: 12px;
-    margin: 8px 0;
-    font-size: 18px;
-    background-color: #0d3b66;
-    color: white;
-    border: none;
-    border-radius: 15px;
-    cursor: pointer;
-}
-
-#confirm-player {
-    background: linear-gradient(145deg, #ff8c42, #e67330);
-    font-size: 24px;
-    padding: 15px;
-    font-weight: bold;
-    border: 2px solid #ffaa33;
-    box-shadow: 0 0 15px rgba(255,140,0,0.7);
-    transition: 0.2s;
-    color: black;
-}
-#confirm-player:hover {
-    background-color: #e07b00;
-    transform: scale(1.02);
-}
-
-.change-player-btn {
-    background-color: #6c757d;
-    color: white;
-}
-
+/* primary */
 .save-button,
-.new-match-btn,
 .download-excel-btn,
-.secondary {
-    margin-top: 20px;
-    padding: 14px;
-    font-size: 22px;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    width: 90%;
-    cursor: pointer;
-    box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+.new-match-btn,
+#start-match,
+#start-stats,
+#modal-done{
+  background: linear-gradient(90deg, rgba(50,255,170,0.95), rgba(80,200,255,0.92));
+  color:#07101c;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.save-button:hover,
+.download-excel-btn:hover,
+.new-match-btn:hover,
+#start-match:hover,
+#start-stats:hover,
+#modal-done:hover{
+  filter: brightness(1.03);
 }
 
-.save-button {
-    background: linear-gradient(145deg, #2e7d5e, #1f5e45);
-    animation: pulseGlow 2s infinite;
+/* secondary */
+.secondary,
+#modal-cancel{
+  background: rgba(255,255,255,0.06);
+  color:#EAF0FF;
 }
 
-.new-match-btn {
-    background-color: #6c757d;
-    margin-top: 10px;
+/* back button */
+.back-button{
+  width:min(980px, 100%);
+  margin: 0 auto;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.download-excel-btn {
-    background: linear-gradient(145deg, #3a5f7a, #2a4a60);
+/* Inputs */
+input, select{
+  width:100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(10, 14, 26, 0.7);
+  color:#EAF0FF;
+  font-size: 18px;
+  outline:none;
+}
+label{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  font-size: 14px;
+  color: rgba(234,240,255,0.78);
 }
 
-.secondary {
-    background-color: #6c757d;
+/* --- Main menu --- */
+.main-menu{
+  align-items:center;
+  justify-content:flex-start;
+}
+.main-menu > button{
+  width:min(760px, 100%);
+  padding: 16px 18px;
+  font-size: 18px;
 }
 
-/* ================= ТАБЛИЦЫ СТАТИСТИКИ ================= */
-.stats-review {
-    padding: 10px;
+/* --- Score screen --- */
+.score-screen .team-inputs,
+.stats-screen .match-info,
+.stats-screen .lineup-selection,
+.stats-screen .stats-main,
+.stats-screen .stats-review,
+.schedule-screen,
+.attendance-screen,
+.history-screen,
+.help-screen{
+  width:min(980px, 100%);
+  margin:0 auto;
+}
+.team-inputs{ display:flex; flex-direction:column; gap:10px; }
+.score-board{
+  width:min(980px, 100%);
+  margin:0 auto;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+}
+.team{
+  padding:16px;
+  border-radius: 22px;
+  background: rgba(14,18,34,0.58);
+  border: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(14px);
+}
+.team h3{ font-size: 18px; opacity:0.9; }
+.score{
+  margin-top:10px;
+  font-size: 56px;
+  font-weight: 900;
+  text-align:center;
+  padding: 18px 0;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.set-score{
+  margin-top:10px;
+  text-align:center;
+  font-size: 18px;
+  opacity:0.85;
+}
+.winner-message{
+  grid-column: 1 / -1;
+  text-align:center;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(50,255,170,0.15);
+  border: 1px solid rgba(50,255,170,0.20);
 }
 
-.stats-review h4 {
-    font-size: 16px;
-    margin: 10px 0 5px;
-    text-align: left;
-    border-bottom: 2px solid #555;
-    padding-bottom: 3px;
-    color: #ffffff;
+/* --- Stats screen --- */
+.match-info{ display:flex; flex-direction:column; gap:12px; }
+
+.lineup-selection h2{ text-align:center; margin-bottom:6px; }
+#lineup-players-list.players-list{
+  max-height: 45dvh;
+}
+.player-item{
+  width:100%;
+  border-radius: 16px;
+  padding: 12px 14px;
+  text-align:center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.07);
+  cursor:pointer;
+}
+.player-item.selected{
+  background: linear-gradient(90deg, rgba(50,255,170,0.25), rgba(80,200,255,0.20));
+  border-color: rgba(80,200,255,0.22);
 }
 
-.review-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 4px;
-    margin-bottom: 15px;
-    font-size: 12px;
-    background-color: transparent;
-    color: #f0f0f0;
+/* Партия selector */
+.set-selector{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 10px 0 4px;
+}
+#set-dropdown{
+  position:absolute;
+  margin-top: 8px;
+  background: rgba(14,18,34,0.85);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  overflow:hidden;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+  backdrop-filter: blur(14px);
+}
+.set-option{
+  padding: 12px 14px;
+  text-align:center;
+  cursor:pointer;
+}
+.set-option:hover{ background: rgba(255,255,255,0.06); }
+
+/* --- Quick mode UI (6 игроков + 5 действий) --- */
+.quick-wrap{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
 
-.review-table th,
-.review-table td {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Verdana', sans-serif !important;
-    border: 1px solid #444;
-    padding: 2px 2px;
-    text-align: center;
-    white-space: nowrap;
-    background: rgba(255,255,255,0.02);
-    backdrop-filter: blur(2px);
-    border-radius: 16px;
+.quick-actions{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.quick-actions button{
+  width:100%;
+  padding: 16px 18px;
+  font-size: 20px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, rgba(50,255,170,0.88), rgba(80,200,255,0.86));
+  color:#07101c;
 }
 
-.review-table td.group-end,
-.review-table th.group-end {
-    border-right: 3px solid #aaa !important;
+.quick-players{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px;
+}
+.quick-players button{
+  padding: 16px 14px;
+  font-size: 18px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.06);
+}
+.quick-players button.active{
+  background: rgba(50,255,170,0.18);
+  border-color: rgba(50,255,170,0.28);
 }
 
-.review-table th {
-    background: rgba(20, 30, 50, 0.8);
-    backdrop-filter: blur(5px);
-    color: white;
-    font-weight: bold;
-    font-size: 12px;
-    border-radius: 20px 20px 8px 8px;
+/* Скрываем старые элементы зоны/меню, чтобы не было дублей */
+.stats-main.quick-mode .volleyball-court,
+.stats-main.quick-mode .player-selection,
+.stats-main.quick-mode .action-menu,
+.stats-main.quick-mode .sub-menu{
+  display:none !important;
 }
 
-.review-table tr:nth-child(even) {
-    background-color: #3a3a3a;
+/* --- Events panel --- */
+.events-panel{
+  border-radius: 22px;
+  padding: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.events-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.events-header h3{ font-size: 18px; }
+#events-list{
+  margin-top:10px;
+  max-height: 22dvh;
+  overflow:auto;
+  border-radius: 16px;
+  background: rgba(10,14,26,0.45);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 8px;
+}
+.event-row{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.04);
+  margin: 8px 0;
+}
+.event-row .meta{ opacity:0.9; font-weight:700; }
+.event-row .sub{ opacity:0.75; font-size: 13px; margin-top:2px; }
+.event-row .del{
+  background: rgba(255,80,110,0.12);
+  border: 1px solid rgba(255,80,110,0.18);
+  color:#ffd9e0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 14px;
 }
 
-.review-table tr:hover {
-    background-color: #4a4a4a;
+/* --- Bottom sheet (результат) --- */
+.sheet-backdrop{
+  position:fixed; inset:0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(10px);
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  z-index: 1000;
+}
+.sheet{
+  width:min(980px, 100%);
+  border-radius: 22px 22px 0 0;
+  padding: 14px;
+  background: rgba(14,18,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 -20px 80px rgba(0,0,0,0.55);
+}
+.sheet h4{
+  text-align:center;
+  margin-bottom:10px;
+  font-size: 18px;
+}
+.sheet-grid{
+  display:grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap:10px;
+}
+.sheet-grid button{
+  border-radius: 18px;
+  padding: 16px 12px;
+  font-size: 16px;
+}
+.sheet-close{
+  margin-top:12px;
+  width:100%;
 }
 
-.negative-points {
-    background: linear-gradient(145deg, #6b2e2e, #4a1f1f) !important;
-    color: white !important;
-    font-weight: bold;
+/* --- Schedule / tables --- */
+.schedule-container{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.schedule-column{
+  flex:1 1 420px;
+  border-radius: 22px;
+  padding: 14px;
+  background: rgba(14,18,34,0.58);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.schedule-table{
+  width:100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+.schedule-table th, .schedule-table td{
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
-.positive-points {
-    background: linear-gradient(145deg, #1f6b2e, #154a1f) !important;
-    color: white !important;
-    font-weight: bold;
+/* --- Attendance --- */
+.attendance-table{
+  width:100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.attendance-table th, .attendance-table td{
+  padding: 6px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  text-align:center;
+}
+.attendance-table td:first-child,
+.attendance-table th:first-child{
+  text-align:left;
+  position:sticky;
+  left:0;
+  background: rgba(14,18,34,0.92);
+  backdrop-filter: blur(10px);
+}
+.present{ color:#48ffb0; }
+.absent{ color:#ff5c7a; }
+
+/* --- Modal --- */
+.modal{
+  position:fixed; inset:0;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(12px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index: 1000;
+}
+.modal-content{
+  width:min(720px, 96%);
+  max-height: 92dvh;
+  overflow:hidden;
+  border-radius: 22px;
+  padding: 14px;
+  background: rgba(14,18,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 22px 90px rgba(0,0,0,0.55);
+}
+.date-selector{ margin: 8px 0 10px; }
+#modal-players-list.players-list{
+  max-height: 55dvh;
+  width:100%;
+  align-items:stretch;
+}
+.modal-player-item{
+  width:100%;
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.07);
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-player-item.selected{
+  background: rgba(50,255,170,0.18);
+  border-color: rgba(50,255,170,0.28);
 }
 
-/* ================= СПРАВКА ================= */
-.help-content {
-    text-align: left;
+/* --- Review tables --- */
+.review-table{
+  width:100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  overflow:auto;
 }
-.help-toc { margin-bottom:20px; padding-bottom:10px; border-bottom:2px solid #555; }
-.help-toc h3 { font-size:22px; margin-bottom:10px; color:#fff; }
-.help-toc ul { list-style:none; padding:0; margin:0; }
-.help-toc li { margin:5px 0; }
-.help-toc a { color:#8bb9fe; text-decoration:none; font-size:18px; }
-.help-toc a:hover { text-decoration:underline; }
-.help-section { margin-bottom:25px; padding-bottom:15px; border-bottom:1px solid #444; }
-.help-section:last-child { border-bottom:none; }
-.help-subsection { margin-left:15px; margin-top:15px; margin-bottom:15px; }
-.help-section h3 { font-size:20px; margin-bottom:10px; color:#fff; }
-.help-subsection h4 { font-size:18px; margin-bottom:8px; color:#ddd; }
-.help-section p, .help-section li { font-size:16px; line-height:1.4; color:#ccc; }
+.review-table th, .review-table td{
+  padding: 6px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  text-align:center;
+  white-space: nowrap;
+}
+.review-table th{
+  position: sticky;
+  top:0;
+  background: rgba(14,18,34,0.92);
+  backdrop-filter: blur(10px);
+  z-index: 2;
+}
+.group-end{ border-right: 1px solid rgba(255,255,255,0.08); }
+.negative-points{ color:#ff5c7a; font-weight:900; }
+.positive-points{ color:#48ffb0; font-weight:900; }
 
-/* ================= РАСПИСАНИЕ ================= */
-.schedule-container { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; }
-.schedule-column { flex:1 1 300px; min-width:280px; background-color:#2d2d2d; border-radius:20px; padding:15px; box-shadow:0 8px 16px rgba(0,0,0,0.7); }
-.schedule-column h3 { font-size:24px; margin-top:0; margin-bottom:15px; color:#fff; text-align:center; border-bottom:2px solid #555; padding-bottom:5px; }
-.schedule-subsection { margin-bottom:20px; }
-.schedule-subsection h4 { font-size:20px; margin:10px 0; color:#ddd; text-align:left; }
-.schedule-table { width:100%; border-collapse:separate; border-spacing:0 4px; font-size:16px; color:#f0f0f0; }
-.schedule-table th { background: rgba(20,30,50,0.8); backdrop-filter:blur(5px); color:white; font-weight:bold; padding:8px 4px; text-align:center; border-radius:20px 20px 8px 8px; }
-.schedule-table td { background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.02); padding:6px 4px; text-align:center; border-radius:16px; }
-.schedule-table tr:nth-child(even) { background-color:#3a3a3a; }
-
-/* ================= ЖУРНАЛ ПОСЕЩЕНИЙ ================= */
-#attendance-content {
-    width: 100%;
-    overflow-x: auto;
-    background-color: #2d2d2d;
-    border-radius: 20px;
-    padding: 10px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.7);
-    margin-bottom: 15px;
+/* --- Responsive / orientation --- */
+@media (max-width: 520px){
+  button{ font-size: 16px; }
+  .quick-players{ grid-template-columns: repeat(2, 1fr); }
+  .sheet-grid{ grid-template-columns: repeat(2, 1fr); }
+  .score{ font-size: 48px; }
 }
 
-.attendance-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 4px;
-    font-size: 14px;
-    color: #f0f0f0;
+@media (orientation: landscape) and (max-height: 520px){
+  /* в ландшафте делаем компактнее, чтобы всё было без скролла */
+  .stats-main{ gap:10px; }
+  #events-list{ max-height: 16dvh; }
+  .quick-actions button{ padding: 12px 14px; font-size: 18px; }
+  .quick-players button{ padding: 12px 12px; }
 }
 
-.attendance-table th {
-    background: rgba(20,30,50,0.8);
-    backdrop-filter: blur(5px);
-    color: white;
-    font-weight: bold;
-    padding: 8px 4px;
-    text-align: center;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    border-radius: 20px 20px 8px 8px;
+
+/* ===== Brand / Logo ===== */
+.brand-header{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin: 6px 0 18px;
+}
+.app-logo{
+  width: min(360px, 72vw);
+  height: auto;
+  filter: drop-shadow(0 18px 40px rgba(0,0,0,.55));
 }
 
-.attendance-table td {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.02);
-    padding: 6px 4px;
-    text-align: center;
-    border-radius: 16px;
+/* ===== Modal footer so buttons don't overlap list ===== */
+.modal-content{
+  display:flex;
+  flex-direction:column;
+  max-height: min(86vh, 820px);
+}
+.modal .players-list{
+  overflow:auto;
+  padding-bottom: 84px; /* space for sticky actions */
+}
+.modal-actions{
+  position: sticky;
+  bottom: 0;
+  padding-top: 14px;
+  background: linear-gradient(180deg, rgba(10,12,18,0), rgba(10,12,18,.65) 20%, rgba(10,12,18,.88));
+  backdrop-filter: blur(10px);
+  display:flex;
+  gap: 12px;
+  justify-content: flex-start;
 }
 
-.attendance-table tr:nth-child(even) {
-    background-color: #3a3a3a;
+/* ===== Schedule table alignment ===== */
+.schedule-table{
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.schedule-table th, .schedule-table td{
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+.schedule-table th:nth-child(2), .schedule-table td:nth-child(2){
+  text-align:center;
+}
+.schedule-table th:last-child, .schedule-table td:last-child{
+  text-align:center;
+}
+.schedule-table td{
+  overflow:hidden;
+  text-overflow: ellipsis;
 }
 
-.attendance-table .present {
-    background: linear-gradient(145deg, #1f4a2a, #15351d) !important;
-    color: white;
-    font-weight: bold;
+/* ===== Review actions / legend ===== */
+.review-actions{
+  margin-top: 18px;
+  display:flex;
+  flex-wrap:wrap;
+  gap: 12px;
+  justify-content:center;
+}
+.secondary-btn{
+  border-radius: 999px;
+  padding: 14px 18px;
+  font-weight: 800;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+}
+.secondary-btn:active{ transform: translateY(1px) scale(.99); }
+
+.legend{
+  margin-top: 14px;
+  padding: 14px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.20);
+  color: rgba(255,255,255,.86);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.legend strong{ color: rgba(255,255,255,.95); }
+.muted{ opacity: .75; }
+
+/* === PWA Update banner === */
+.pwa-update{
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: calc(12px + env(safe-area-inset-top));
+  z-index: 2000;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(14,18,34,0.92);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 18px 70px rgba(0,0,0,0.55);
+  backdrop-filter: blur(14px);
+}
+.pwa-update__text{ font-weight: 800; }
+.pwa-update__sub{ opacity: .7; font-weight: 600; font-size: 12px; margin-top: 2px; }
+.pwa-update__btn{
+  background: linear-gradient(90deg, rgba(50,255,170,0.95), rgba(80,200,255,0.92));
+  color:#07101c;
+  border: 1px solid rgba(255,255,255,0.10);
+  padding: 12px 14px;
+  font-size: 16px;
 }
 
-.attendance-table .absent {
-    background: linear-gradient(145deg, #5a2a2a, #3d1d1d) !important;
-    color: white;
-    font-weight: bold;
+/* === Attendance month nav (2026) === */
+.month-nav{
+  width: min(980px, 100%);
+  margin: 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 12px;
+}
+.month-title{
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  opacity: .95;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
-#fill-attendance, #edit-attendance {
-    width: 200px;
-    margin: 5px;
+/* events-list class (чтоб не зависеть от id) */
+.events-list{
+  margin-top:10px;
+  max-height: 22dvh;
+  overflow:auto;
+  border-radius: 16px;
+  background: rgba(10,14,26,0.45);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 8px;
 }
 
-/* ================= МОДАЛЬНОЕ ОКНО ================= */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.8);
-    backdrop-filter: blur(12px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+/* ===== Schedule: tags for match type ===== */
+.schedule-table .tag{
+  display:inline-flex;
+  align-items:center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  border: 1px solid rgba(255,255,255,.12);
+  white-space: nowrap;
+}
+.tag--oblast{
+  color: rgba(220, 190, 255, .95);
+  background: rgba(160, 90, 255, .14);
+  border-color: rgba(180, 120, 255, .26);
+}
+.tag--city{
+  color: rgba(150, 210, 255, .95);
+  background: rgba(70, 190, 255, .12);
+  border-color: rgba(70, 190, 255, .26);
 }
 
-.modal.hidden {
-    display: none;
+/* upcoming table: 5 columns widths */
+.schedule-table--upcoming th:nth-child(1),
+.schedule-table--upcoming td:nth-child(1){ width: 22%; }
+.schedule-table--upcoming th:nth-child(2),
+.schedule-table--upcoming td:nth-child(2){ width: 14%; text-align:center; }
+.schedule-table--upcoming th:nth-child(3),
+.schedule-table--upcoming td:nth-child(3){ width: 26%; }
+.schedule-table--upcoming th:nth-child(4),
+.schedule-table--upcoming td:nth-child(4){ width: 18%; text-align:center; }
+.schedule-table--upcoming th:nth-child(5),
+.schedule-table--upcoming td:nth-child(5){ width: 20%; text-align:center; }
+
+/* ===== Schedule filter ===== */
+.schedule-filter{
+  width: min(980px, 100%);
+  margin: 0 auto;
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.filter-btn{
+  border-radius: 999px;
+  padding: 12px 14px;
+  font-weight: 900;
+  font-size: 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+}
+.filter-btn.active{
+  background: linear-gradient(90deg, rgba(50,255,170,0.26), rgba(80,200,255,0.22));
+  border-color: rgba(80,200,255,0.28);
 }
 
-.modal-content {
-    background: linear-gradient(145deg, #25253a, #1a1a2a);
-    border-radius: 48px;
-    padding: 20px;
-    max-width: 90%;
-    max-height: 80%;
-    overflow-y: auto;
-    box-shadow: 0 30px 60px -15px black;
-    border: 1px solid rgba(255,255,255,0.1);
+/* =========================
+   FIX: Lineup (кнопка/счетчик не налезают)
+   ========================= */
+.lineup-selection{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  max-height: 86dvh;
+  overflow:hidden;
 }
 
-.modal-content h3 {
-    color: #ffffff;
-    margin-bottom: 15px;
-    text-align: center;
+/* список скроллится, а низ — фиксированный */
+#lineup-players-list.players-list{
+  flex: 1 1 auto;
+  overflow:auto;
+  padding-bottom: 96px; /* запас под p + кнопку */
+  border-radius: 18px;
 }
 
-.date-selector {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 15px;
+/* счетчик и кнопка “внизу” */
+.lineup-selection p{
+  margin: 0;
+  position: sticky;
+  bottom: 62px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(14,18,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(10px);
+  width: fit-content;
 }
 
-.date-selector select {
-    font-size: 18px;
-    padding: 10px;
-    border-radius: 15px;
-    background-color: #3a3a3a;
-    color: #f0f0f0;
-    border: 1px solid #555;
+#confirm-lineup{
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  z-index: 2;
+  padding: 14px 18px;
+  border-radius: 999px;
 }
 
-#modal-players-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
-    max-height: 400px;
-    overflow-y: auto;
-    padding: 5px;
+/* =========================
+   Lux UI base (чтобы всё было красиво и кликабельно)
+   ========================= */
+.lux-shell{ width:100%; }
+.lux-grid{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
 }
 
-.modal-player-item {
-    background: rgba(40,40,60,0.6);
-    border-radius: 40px;
-    padding: 14px 18px;
-    margin: 6px 0;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid rgba(255,255,255,0.02);
-    text-align: center;
-    font-weight: 500;
-    color: #f0f0f0;
+.lux-topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
 }
 
-.modal-player-item.selected {
-    background: linear-gradient(145deg, #3a6f9a, #2a4f7a);
-    border-color: rgba(255,255,255,0.3);
-    transform: scale(1.02);
+.lux-topbar .title{
+  font-weight: 900;
+  letter-spacing: .2px;
+  opacity:.95;
 }
 
-#modal-done, #modal-cancel {
-    width: 100%;
-    margin: 5px 0;
+.lux-topbar .pill{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
 }
 
-#modal-cancel {
-    background-color: #6c757d;
+#lux-set-btn{
+  font-weight: 900;
+  cursor:pointer;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
 }
 
-/* ================= ИСТОРИЯ ================= */
-.history-item {
-    background: rgba(40, 40, 55, 0.6);
-    backdrop-filter: blur(5px);
-    border-radius: 40px;
-    padding: 12px 22px;
-    margin: 10px 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border: 1px solid rgba(255,255,255,0.05);
-    transition: all 0.2s;
-    font-size: 18px;
-    color: #ffffff;
+.lux-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.history-item:hover {
-    background: rgba(50, 50, 70, 0.7);
+.lux-actions .lux-action{
+  flex: 1 1 140px;
+  border-radius: 999px;
+  padding: 12px 14px;
 }
 
-.history-item button {
-    background: linear-gradient(145deg, #a54545, #7a3333);
-    border: none;
-    border-radius: 40px;
-    padding: 6px 12px;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 16px;
+.lux-players{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
 }
 
-.back-button {
-    align-self: flex-start;
-    margin: 10px 0;
-    padding: 10px 20px;
-    background: rgba(255,255,255,0.05);
-    color: white;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 40px;
-    font-size: 18px;
-    cursor: pointer;
-    width: auto;
-    backdrop-filter: blur(5px);
-    transition: all 0.2s;
+.lux-players-grid{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
-.back-button:hover {
-    background: rgba(255,255,255,0.1);
+.lux-player{
+  border-radius: 999px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.lux-player.active{
+  background: rgba(50,255,170,0.18);
+  border-color: rgba(50,255,170,0.28);
 }
 
-/* ================= СИНХРОНИЗАЦИЯ (НОВЫЕ КНОПКИ) ================= */
-#sync-upload, #sync-download {
-    background: linear-gradient(145deg, #4a6fa5, #3b5a8a);
-    font-size: 1.1rem;
-    padding: 14px 20px;
-    margin-top: 8px;
+.lux-save{
+  position: sticky;
+  bottom: 0;
+  padding-top: 12px;
+  background: linear-gradient(180deg, rgba(6,10,20,0), rgba(6,10,20,.65) 20%, rgba(6,10,20,.88));
+  backdrop-filter: blur(10px);
+  z-index: 5;
 }
 
-/* ================= СКРОЛЛБАР ================= */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+/* =========================
+   Schedule beautify + badges
+   ========================= */
+.schedule-table--pretty{
+  border-radius: 18px;
+  overflow:hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(10,14,26,0.35);
 }
 
-::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.2);
+.td-strong{ font-weight: 900; opacity: .95; }
+.td-score{ font-weight: 900; text-align:center; }
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  border: 1px solid rgba(255,255,255,0.12);
 }
 
-::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.2);
-    border-radius: 20px;
+.badge-oblast{
+  color: rgba(245, 215, 255, 0.95);
+  background: rgba(160, 90, 255, 0.18); /* фиолетовый */
+  border-color: rgba(160, 90, 255, 0.28);
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.3);
+.badge-city{
+  color: rgba(210, 235, 255, 0.95);
+  background: rgba(80, 200, 255, 0.16); /* синий */
+  border-color: rgba(80, 200, 255, 0.26);
+}
+
+/* === FIX: set-dropdown перекрывается другими элементами в Quick Mode === */
+
+/* чтобы абсолютный dropdown имел “контекст” и не уезжал/не перекрывался */
+.stats-main { position: relative; }
+
+/* важно: не давать контейнерам резать dropdown */
+.lux-shell,
+.lux-grid,
+.lux-top,
+.lux-topbar {
+  overflow: visible;
+}
+
+/* поднять слой выпадающего списка выше кнопок и панелей */
+#set-dropdown{
+  z-index: 5000;
+}
+
+/* на всякий случай: кнопка партии тоже поверх */
+#lux-set-btn{
+  position: relative;
+  z-index: 5001;
 }

@@ -7,30 +7,25 @@ exports.handler = async (event) => {
 
   try {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
-    const { date, present } = JSON.parse(event.body);
+    const { date, present } = JSON.parse(event.body || '{}');
 
-    // Проверяем, существует ли запись
-    const existing = await sql`SELECT id FROM attendance WHERE date = ${date}`;
-
-    if (existing.length > 0) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: 'Attendance already exists', skipped: true })
-      };
+    if (!date) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'date is required' }) };
     }
 
-    // Вставляем, явно преобразуя present в JSON-строку
-    await sql`INSERT INTO attendance (date, present) VALUES (${date}, ${JSON.stringify(present)})`;
+    await sql`
+      INSERT INTO attendance (date, present)
+      VALUES (
+        ${date},
+        ${JSON.stringify(present || {})}::jsonb
+      )
+      ON CONFLICT (date) DO UPDATE SET
+        present = EXCLUDED.present
+    `;
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true })
-    };
+    return { statusCode: 200, body: JSON.stringify({ success: true }) };
   } catch (error) {
     console.error(error);
-    return {
-      statusCode: 500,
-      body: 'Database error'
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Database error' }) };
   }
 };

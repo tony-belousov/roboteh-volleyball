@@ -7,7 +7,23 @@ exports.handler = async (event) => {
 
   try {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
-    const matches = await sql`SELECT * FROM matches ORDER BY created_at DESC`;
+    const matches = await sql`
+      SELECT
+        id,
+        match_id AS "matchId",
+        date,
+        opponent,
+        team,
+        sets,
+        players_by_zone AS "playersByZone",
+        lineup,
+        event_log AS "eventLog",
+        created_at,
+        updated_at
+      FROM matches
+      ORDER BY created_at DESC
+    `;
+
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -15,9 +31,6 @@ exports.handler = async (event) => {
     };
   } catch (error) {
     console.error('Database error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Database error' })
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Database error' }) };
   }
 };

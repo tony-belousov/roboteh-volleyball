@@ -7,36 +7,42 @@ exports.handler = async (event) => {
 
   try {
     const sql = neon(process.env.NETLIFY_DATABASE_URL);
-    const match = JSON.parse(event.body);
+    const match = JSON.parse(event.body || '{}');
 
-    const existing = await sql`
-      SELECT id FROM matches 
-      WHERE date = ${match.date} 
-        AND opponent = ${match.opponent} 
-        AND team = ${match.team}
-    `;
-
-    if (existing.length > 0) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ message: 'Match already exists', skipped: true })
-      };
+    if (!match.matchId) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'matchId is required' }) };
     }
 
     await sql`
-      INSERT INTO matches (date, opponent, team, sets, playersByZone, lineup, created_at)
-      VALUES (${match.date}, ${match.opponent}, ${match.team}, ${match.sets}, ${match.playersByZone}, ${match.lineup}, NOW())
+      INSERT INTO matches (
+        match_id, date, opponent, team,
+        sets, players_by_zone, lineup, event_log, updated_at
+      )
+      VALUES (
+        ${match.matchId},
+        ${match.date},
+        ${match.opponent},
+        ${match.team},
+        ${JSON.stringify(match.sets || {})}::jsonb,
+        ${JSON.stringify(match.playersByZone || {})}::jsonb,
+        ${JSON.stringify(match.lineup || [])}::jsonb,
+        ${JSON.stringify(match.eventLog || [])}::jsonb,
+        NOW()
+      )
+      ON CONFLICT (match_id) DO UPDATE SET
+        date = EXCLUDED.date,
+        opponent = EXCLUDED.opponent,
+        team = EXCLUDED.team,
+        sets = EXCLUDED.sets,
+        players_by_zone = EXCLUDED.players_by_zone,
+        lineup = EXCLUDED.lineup,
+        event_log = EXCLUDED.event_log,
+        updated_at = NOW()
     `;
 
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true })
-    };
+    return { statusCode: 200, body: JSON.stringify({ success: true }) };
   } catch (error) {
     console.error('Database error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Database error' })
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: 'Database error' }) };
   }
 };
