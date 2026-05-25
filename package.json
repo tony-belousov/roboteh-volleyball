@@ -1,4 +1,11 @@
 {
+  "name": "setka-pwa",
+  "version": "2026.05.22",
+  "private": true,
+  "scripts": {
+    "build": "node tools/check-build.js",
+    "dev": "node tools/dev-server.js"
+  },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2"
   }
