@@ -2,304 +2,264 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-  <title>Роботех</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b3b36" />
+  <meta name="description" content="Сетка: команда, матч и волейбольная статистика" />
+
+  <title>Сетка</title>
 
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="setka-icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="setka-icon-192.png" />
 
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Роботех" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-title" content="Сетка" />
 </head>
 
 <body>
-  <!-- PWA Update banner -->
-  <div id="pwa-update" class="pwa-update hidden">
-    <div class="pwa-update__text">
-      Доступно обновление приложения
-      <div class="pwa-update__sub">Нажмите «Обновить», чтобы применить новую версию</div>
+  <div id="pwa-update" class="pwa-update hidden" role="status">
+    <div>
+      <strong>Доступно обновление</strong>
+      <span>Нажмите «Обновить», чтобы применить новую версию.</span>
     </div>
-    <button id="pwa-update-btn" type="button" class="pwa-update__btn">Обновить</button>
+    <button id="pwa-update-btn" type="button">Обновить</button>
   </div>
 
   <div id="app">
-    <!-- Главное меню -->
-    <div class="main-menu visible">
-      <div class="brand-header">
-        <img class="app-logo" src="robotex_logo.png" alt="Роботех" />
+    <section id="welcome-screen" class="screen welcome-screen" data-screen="welcome" aria-label="Приветствие">
+      <img class="app-logo" src="setka-icon.svg" alt="" />
+      <h1>Сетка</h1>
+      <p>Команда. Матч. Статистика.</p>
+      <div class="welcome-meta">
+        <span>Версия <strong id="welcome-version">—</strong></span>
+        <span id="welcome-account">Профиль: Роботех</span>
       </div>
+    </section>
 
-      <button id="start-score">Ведение счёта</button>
-      <button id="match-stats">Статистика матча</button>
-      <button id="schedule">Расписание матчей</button>
-      <button id="attendance">Журнал посещений</button>
-      <button id="history">История матчей</button>
-      <button id="help">Справка</button>
-      <button id="sync-upload">📤 Отправить в облако</button>
-      <button id="sync-download">📥 Загрузить из облака</button>
-
-      <div style="margin-top:10px; text-align:center; opacity:.65; font-weight:800;">
-        Версия: <span id="app-version">—</span>
+    <section id="pin-screen" class="screen pin-screen hidden" data-screen="pin" aria-label="Вход по короткому паролю">
+      <div class="screen-topline">
+        <img class="mini-logo" src="setka-icon.svg" alt="" />
+        <span>Сетка</span>
       </div>
-    </div>
-
-    <!-- Экран счёта -->
-    <div class="score-screen hidden">
-      <button class="back-button">Назад</button>
-      <div class="team-inputs">
-        <input type="text" id="team1-name" placeholder="Команда 1" />
-        <input type="text" id="team2-name" placeholder="Команда 2" />
-        <button id="start-match">Начать матч</button>
+      <div class="pin-card">
+        <h1>Короткий пароль</h1>
+        <p>Введите пароль доступа к приложению.</p>
+        <input id="pin-input" inputmode="numeric" autocomplete="one-time-code" type="password" maxlength="8" aria-label="Короткий пароль" />
+        <button id="pin-submit" type="button">Войти</button>
+        <div id="pin-error" class="form-error hidden">Пароль не подошёл</div>
       </div>
+    </section>
 
-      <div class="score-board hidden">
-        <div class="team team1">
-          <h3 id="team1-title">Команда 1</h3>
-          <div class="score" data-team="1">0</div>
-          <div class="set-score" id="team1-set-score">0</div>
-        </div>
-
-        <div class="team team2">
-          <h3 id="team2-title">Команда 2</h3>
-          <div class="score" data-team="2">0</div>
-          <div class="set-score" id="team2-set-score">0</div>
-        </div>
-
-        <div class="winner-message hidden" id="winner-message"></div>
-      </div>
-    </div>
-
-    <!-- Экран статистики -->
-    <div class="stats-screen hidden">
-      <button class="back-button">Назад</button>
-
-      <div class="match-info">
-        <label>Дата матча: <input type="date" id="match-date" /></label>
-        <label>Соперник: <input type="text" id="opponent" /></label>
-        <label>Команда:
-          <select id="team-select">
-            <option value="robotex">РОБОТЕХ</option>
-            <option value="robotex2">РОБОТЕХ 2.0</option>
-          </select>
-        </label>
-        <button id="start-stats">Начать статистику</button>
-      </div>
-
-      <div class="lineup-selection hidden">
-        <h2>Выберите стартовую шестёрку</h2>
-        <div id="lineup-players-list" class="players-list"></div>
-        <p>Выбрано: <span id="selected-count">0</span>/6</p>
-        <button id="confirm-lineup" disabled>Подтвердить состав</button>
-      </div>
-
-      <div class="stats-main hidden">
-        <div class="set-selector">
-          Партия: <span id="current-set">1</span>
-          <div class="set-dropdown hidden" id="set-dropdown">
-            <div class="set-option" data-set="1">1</div>
-            <div class="set-option" data-set="2">2</div>
-            <div class="set-option" data-set="3">3</div>
-            <div class="set-option" data-set="4">4</div>
-            <div class="set-option" data-set="5">5</div>
+    <section id="menu-screen" class="screen menu-screen hidden" data-screen="menu" aria-label="Главное меню">
+      <header class="app-header">
+        <div class="brand-lockup">
+          <img class="mini-logo" src="setka-icon.svg" alt="" />
+          <div>
+            <h1>Сетка</h1>
+            <p>Команда. Матч. Статистика.</p>
           </div>
         </div>
-
-        <!-- старый режим (скрывается quick-mode стилями) -->
-        <div class="volleyball-court">
-          <div class="zone zone-4" data-zone="4">4</div>
-          <div class="zone zone-3" data-zone="3">3</div>
-          <div class="zone zone-2" data-zone="2">2</div>
-          <div class="zone zone-5" data-zone="5">5</div>
-          <div class="zone zone-6" data-zone="6">6</div>
-          <div class="zone zone-1" data-zone="1">1</div>
+        <div class="profile-switcher">
+          <button class="account-pill profile-button" id="team-profile-button" type="button" aria-expanded="false">
+            Профиль: Роботех
+          </button>
+          <div id="team-profile-menu" class="profile-menu hidden" role="menu"></div>
         </div>
+      </header>
 
-        <div class="player-selection hidden">
-          <h3>Зона <span id="current-zone">1</span></h3>
-          <select id="player-select"></select>
-          <button id="confirm-player">👉 Подтвердить</button>
+      <nav class="menu-grid" aria-label="Разделы приложения">
+        <button type="button" data-route="team">Моя команда</button>
+        <button type="button" data-route="calendar">Календарь</button>
+        <button type="button" data-route="coach">Тренерская</button>
+        <button type="button" data-route="stats">Запись статистики</button>
+        <button type="button" data-route="results">Результаты</button>
+        <button type="button" data-route="export">Экспорт данных</button>
+        <button type="button" data-route="documents">Документы</button>
+        <button type="button" data-route="scoreboard">Электронное табло</button>
+        <button type="button" data-route="help">Справка</button>
+        <button type="button" data-route="sync">Облако / синхронизация</button>
+      </nav>
+
+      <footer class="app-footer">Версия <span id="menu-version">—</span></footer>
+    </section>
+
+    <section id="team-screen" class="screen team-screen hidden" data-screen="team" aria-label="Моя команда">
+      <header class="section-header">
+        <button class="back-button" type="button" data-back>Меню</button>
+        <h1>Моя команда</h1>
+      </header>
+
+      <div class="team-hero">
+        <div class="team-logo" id="team-logo" aria-hidden="true">С</div>
+        <div>
+          <h2 id="team-name">—</h2>
+          <p id="team-subtitle">—</p>
         </div>
+      </div>
 
-        <div class="action-menu hidden">
-          <h3>Действие</h3>
-          <button class="action-btn" data-action="receive">Прием</button>
-          <button class="action-btn" data-action="attack">Атака</button>
-          <button class="action-btn" data-action="defense">Защита</button>
-          <button class="action-btn" data-action="block">Блок</button>
-          <button class="action-btn" data-action="serve">Подача</button>
-          <button id="change-player" class="change-player-btn">Сменить игрока</button>
-        </div>
+      <div class="team-actions">
+        <button id="team-season-stats-toggle" class="secondary-button" type="button">Статистика игроков за сезон</button>
+      </div>
 
-        <div class="sub-menu hidden">
-          <h4 id="sub-menu-title"></h4>
-          <div class="sub-btns-container"></div>
-        </div>
+      <section id="team-season-stats" class="info-section team-season-stats hidden" aria-labelledby="team-season-stats-title">
+        <h2 id="team-season-stats-title">Статистика игроков за сезон</h2>
+        <div id="team-season-stats-content" class="season-player-list"></div>
+      </section>
 
-        <div class="events-panel">
-          <div class="events-header">
-            <h3>Журнал событий</h3>
-            <button id="undo-last" class="action-btn secondary" disabled>⟲ Отменить последнее</button>
+      <section class="info-section" aria-labelledby="coaches-title">
+        <h2 id="coaches-title">Тренеры</h2>
+        <div id="coaches-list" class="stack-list"></div>
+      </section>
+
+      <section class="info-section" aria-labelledby="players-title">
+        <h2 id="players-title">Игроки</h2>
+        <div id="players-list" class="players-list"></div>
+      </section>
+
+      <section class="info-section team-links" aria-labelledby="contacts-title">
+        <h2 id="contacts-title">Связь</h2>
+        <div id="social-links" class="link-list"></div>
+        <div id="team-contacts" class="contact-list"></div>
+      </section>
+    </section>
+
+    <section id="player-screen" class="screen player-screen hidden" data-screen="player" aria-label="Карточка игрока">
+      <header class="section-header">
+        <button class="back-button" type="button" id="player-back">Назад</button>
+        <h1>Игрок</h1>
+      </header>
+      <div id="player-card" class="player-card"></div>
+    </section>
+
+    <section id="stats-screen" class="screen stats-screen hidden" data-screen="stats" aria-label="Запись статистики">
+      <div id="match-setup" class="match-setup hidden" aria-label="Создание матча"></div>
+
+      <div class="orientation-hint">
+        <img class="mini-logo" src="setka-icon.svg" alt="" />
+        <h1>Поверните телефон горизонтально</h1>
+        <p>Так удобнее вести статистику во время матча.</p>
+        <button class="back-button" type="button" data-back>Меню</button>
+      </div>
+
+      <div class="stats-workbench">
+        <header class="stats-topbar">
+          <button class="stats-menu-button" type="button" data-back>Меню</button>
+          <div class="stats-match-title">
+            <strong id="stats-match-name">Сетка</strong>
+            <span id="stats-set-score">Партия 1</span>
           </div>
-          <div id="events-list" class="events-list"></div>
-        </div>
+          <div class="stats-top-actions">
+            <button class="stats-small-button" type="button" id="finish-match-button" title="Завершить матч">Завершить</button>
+            <button class="stats-small-button danger" type="button" id="delete-draft-button" title="Удалить черновик">Черновик</button>
+          </div>
+          <div class="autosave-indicator" id="autosave-indicator">Сохранено</div>
+        </header>
 
-        <button id="save-stats" class="save-button">Завершить матч и сохранить</button>
-      </div>
-
-      <div class="stats-review hidden">
-        <h3>Статистика матча</h3>
-        <p id="review-match-info"></p>
-        <div id="review-content"></div>
-
-        <div class="review-actions">
-          <button id="download-excel" class="download-excel-btn">Скачать в XLSX</button>
-          <button id="edit-match-btn" class="secondary-btn">Изменить данные</button>
-          <button id="new-match-btn" class="new-match-btn">Новый матч</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Расписание матчей -->
-    <div class="schedule-screen hidden">
-      <button class="back-button">Назад</button>
-      <h2>Расписание матчей</h2>
-
-      <!-- ✅ фильтр -->
-      <div class="card" style="padding:12px; margin-bottom: 4px;">
-        <label style="gap:6px;">
-          Показать:
-          <select id="schedule-team-filter">
-            <option value="both">Оба</option>
-            <option value="robotex">Роботех</option>
-            <option value="robotex2">Роботех 2.0</option>
-          </select>
-        </label>
-        <div style="margin-top:8px; opacity:.7; font-weight:700; font-size:12px;">
-          <span class="badge badge-oblast">Область</span>
-          <span style="margin-left:8px;" class="badge badge-city">Город</span>
+        <div class="stats-grid-shell">
+          <div id="stats-grid" class="stats-grid" role="table" aria-label="Панель записи статистики"></div>
         </div>
       </div>
 
-      <div id="schedule-content" class="schedule-container"></div>
-    </div>
-
-    <!-- Журнал посещений -->
-    <div class="attendance-screen hidden">
-      <button class="back-button">Назад</button>
-      <h2>Журнал посещений тренировок</h2>
-
-      <div class="month-nav">
-        <button id="att-prev-month" class="secondary-btn" type="button">←</button>
-        <div id="att-month-title" class="month-title">Февраль 2026</div>
-        <button id="att-next-month" class="secondary-btn" type="button">→</button>
-      </div>
-
-      <div id="attendance-content"></div>
-
-      <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-        <button id="fill-attendance" class="action-btn">Заполнить посещаемость</button>
-        <button id="edit-attendance" class="action-btn secondary">Изменить данные</button>
-      </div>
-    </div>
-
-    <!-- Модальное окно посещаемости -->
-    <div id="attendance-modal" class="modal hidden">
-      <div class="modal-content">
-        <h3 id="modal-title"></h3>
-        <div id="modal-date-selector" class="date-selector"></div>
-        <div id="modal-players-list" class="players-list"></div>
-        <div class="modal-actions">
-          <button id="modal-done" class="action-btn">Готово</button>
-          <button id="modal-cancel" class="action-btn secondary">Отмена</button>
+      <div id="substitution-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="substitution-title">
+        <div class="modal-panel">
+          <h2 id="substitution-title">Замена</h2>
+          <p id="substitution-current">—</p>
+          <div id="bench-list" class="bench-list"></div>
+          <button id="substitution-close" class="secondary-button" type="button">Отмена</button>
         </div>
       </div>
-    </div>
 
-    <!-- Модалка замены -->
-    <div id="player-swap-modal" class="modal hidden">
-      <div class="modal-content">
-        <h3>Замена игрока</h3>
-        <p class="muted">Кого меняем: <strong id="swap-current">—</strong></p>
-        <div id="swap-players-list" class="players-list"></div>
-        <div class="modal-actions">
-          <button id="swap-cancel" class="action-btn secondary">Отмена</button>
+      <div id="finish-match-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="finish-match-title">
+        <div class="modal-panel finish-panel">
+          <h2 id="finish-match-title">Завершить матч</h2>
+          <p id="finish-match-summary">Заполните итоговый счёт и сохраните матч в результаты.</p>
+          <div id="finish-match-form" class="finish-match-form"></div>
+          <div class="modal-actions">
+            <button id="finish-match-save" class="primary-action" type="button">Сохранить матч</button>
+            <button id="finish-match-cancel" class="secondary-button" type="button">Отмена</button>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- История -->
-    <div class="history-screen hidden">
-      <button class="back-button">Назад</button>
-      <h2>История матчей</h2>
-      <div id="history-list"></div>
-    </div>
+    <section id="results-screen" class="screen results-screen hidden" data-screen="results" aria-label="Результаты">
+      <header class="section-header">
+        <button class="back-button" type="button" data-back>Меню</button>
+        <h1>Результаты</h1>
+      </header>
+      <div id="results-content" class="results-content" aria-live="polite">
+        <div class="results-loading">Загрузка результатов</div>
+      </div>
+    </section>
 
-    <!-- Справка -->
-    <div class="help-screen hidden">
-      <button class="back-button">Назад</button>
-      <h2>Справка по приложению</h2>
-      <div class="help-content"></div>
-    </div>
+    <section id="placeholder-screen" class="screen placeholder-screen hidden" data-screen="placeholder" aria-label="Раздел скоро будет">
+      <header class="section-header">
+        <button class="back-button" type="button" data-back>Меню</button>
+        <h1 id="placeholder-title">Раздел</h1>
+      </header>
+      <div class="placeholder-body">
+        <img class="app-logo small" src="setka-icon.svg" alt="" />
+        <h2>Скоро будет</h2>
+        <p id="placeholder-text">Раздел подготовлен как независимый модуль.</p>
+      </div>
+    </section>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="storage/teams.js"></script>
+  <script src="storage/events.js"></script>
+  <script src="storage/matches.js"></script>
+  <script src="stats/calculateTeamStats.js"></script>
+  <script src="stats/calculatePlayerStats.js"></script>
+  <script src="stats/calculateRoleStats.js"></script>
+  <script src="stats/calculateSetStats.js"></script>
+  <script src="stats/calculateSeasonStats.js"></script>
+  <script src="stats/compareMatches.js"></script>
+  <script src="stats/getBestPerformers.js"></script>
+  <script src="export/pdf.js"></script>
   <script src="script.js"></script>
-
   <script>
-    if ('serviceWorker' in navigator) {
-      <script>
-  (function () {
-    if (!('serviceWorker' in navigator)) return;
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
 
-    const banner = document.getElementById('pwa-update');
-    const btn = document.getElementById('pwa-update-btn');
+      const banner = document.getElementById('pwa-update');
+      const button = document.getElementById('pwa-update-btn');
 
-    function showUpdateBanner(reg) {
-      if (!banner || !btn) return;
-      banner.classList.remove('hidden');
+      function showUpdateBanner(registration) {
+        if (!banner || !button) return;
+        banner.classList.remove('hidden');
+        button.onclick = function () {
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        };
+      }
 
-      btn.onclick = async () => {
-        // просим waiting SW активироваться
-        if (reg.waiting) {
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-      };
-    }
+      navigator.serviceWorker.register('sw.js').then(function (registration) {
+        if (registration.waiting) showUpdateBanner(registration);
 
-    navigator.serviceWorker.register('sw.js')
-      .then((reg) => {
-        console.log('Service Worker registered', reg);
+        registration.addEventListener('updatefound', function () {
+          const worker = registration.installing;
+          if (!worker) return;
 
-        // если уже есть waiting (например, после перезагрузки)
-        if (reg.waiting) showUpdateBanner(reg);
-
-        // новый SW скачался -> станет installed (и будет waiting, если есть активный)
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          if (!newWorker) return;
-
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed') {
-              // если есть активный SW, значит это обновление
-              if (navigator.serviceWorker.controller) {
-                showUpdateBanner(reg);
-              }
+          worker.addEventListener('statechange', function () {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+              showUpdateBanner(registration);
             }
           });
         });
-      })
-      .catch((err) => console.log('Service Worker registration failed', err));
+      }).catch(function (error) {
+        console.log('Service worker не зарегистрирован', error);
+      });
 
-    // когда новый SW активировался — перезагружаем, чтобы подтянуть новые ассеты
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
-  })();
-</script>
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
+      });
+    })();
+  </script>
 </body>
 </html>
