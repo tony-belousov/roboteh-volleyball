@@ -98,7 +98,7 @@
       byAction,
       errors: {
         total: errorEvents.length,
-        bySet: groupCount(errorEvents, (event) => event.setNumber || 'Без партии'),
+        bySet: groupCount(errorEvents, (event) => event.setNumber || 'Партия не указана'),
         byPlayer: groupCount(errorEvents, (event) => event.playerName || event.playerId || 'Игрок'),
         byRole: groupCount(errorEvents, (event) => event.playerRole || 'Амплуа')
       }

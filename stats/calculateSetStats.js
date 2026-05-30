@@ -5,7 +5,7 @@
     const groups = new Map();
 
     events.forEach((event) => {
-      const key = event.setNumber || 'Без партии';
+      const key = event.setNumber ? String(event.setNumber) : 'unknown';
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(event);
     });
@@ -21,11 +21,13 @@
       const players = window.SetkaStatsPlayers.calculatePlayerStats({
         ...match,
         events: setEvents
-      });
+      }, teamId);
       const bestPlayers = players
         .filter((player) => player.totalActions > 0)
         .slice(0, 3);
       const teamStats = window.SetkaStatsCore.calculateTeamStats(setEvents);
+      const numericSet = Number(setNumber);
+      const hasNumericSet = Number.isFinite(numericSet);
       const problemActions = window.SetkaStatsCore.ACTIONS
         .filter((action) => action.type !== 'error')
         .map((action) => teamStats.byAction[action.type])
@@ -34,8 +36,9 @@
         .slice(0, 2);
 
       return {
-        setNumber,
-        score: setScores[Number(setNumber) - 1] || '—',
+        setNumber: hasNumericSet ? numericSet : 'Партия не указана',
+        setKey: setNumber,
+        score: hasNumericSet ? (setScores[numericSet - 1] || '—') : '—',
         totalActions: setEvents.length,
         teamStats,
         bestPlayers,
@@ -45,7 +48,14 @@
 
     return {
       hasSetData: true,
-      sets: sets.sort((a, b) => Number(a.setNumber) - Number(b.setNumber))
+      sets: sets.sort((a, b) => {
+        const aNumber = Number(a.setKey);
+        const bNumber = Number(b.setKey);
+        if (Number.isFinite(aNumber) && Number.isFinite(bNumber)) return aNumber - bNumber;
+        if (Number.isFinite(aNumber)) return -1;
+        if (Number.isFinite(bNumber)) return 1;
+        return String(a.setKey).localeCompare(String(b.setKey), 'ru');
+      })
     };
   }
 

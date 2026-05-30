@@ -33,7 +33,7 @@
     })[0]?.match || null;
 
     const setCandidates = safeMatches.flatMap((match) => {
-      const setStats = window.SetkaStatsSets.calculateSetStats(match);
+      const setStats = window.SetkaStatsSets.calculateSetStats(match, teamId);
       return setStats.sets.map((set) => ({ match, set }));
     });
 

@@ -148,6 +148,7 @@
       result: match.result || '',
       coachComment: match.coachComment || match.comment || '',
       status: match.status || (matchEvents.length > 0 ? 'сохранён локально' : 'черновик'),
+      setNumber: Math.min(5, Math.max(1, Number(match.setNumber || match.currentSet || 1) || 1)),
       roster: Array.isArray(match.roster) && match.roster.length ? match.roster : [],
       lineup: startingLineup,
       startingLineup,
