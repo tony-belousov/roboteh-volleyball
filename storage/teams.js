@@ -2,6 +2,10 @@
   const ACTIVE_TEAM_KEY = 'setka.activeTeamId';
   const DEFAULT_TEAM_ID = 'robotech';
   const ROBOTECH_LOGO = 'assets/brand/robotech-logo.png';
+  const TEAM_DEFAULT_PHOTOS = {
+    robotech: 'assets/placeholders/robotech-default.png',
+    robotech_2: 'assets/placeholders/robotech2-default.png'
+  };
 
   function splitName(fullName) {
     const parts = String(fullName || '').trim().split(/\s+/);
@@ -27,6 +31,16 @@
     return parts.slice(0, 2).join(' ') || getFullName(player);
   }
 
+  function getTeamDefaultPhoto(teamId) {
+    return TEAM_DEFAULT_PHOTOS[teamId] || '';
+  }
+
+  function getPlayerPhoto(player) {
+    if (!player) return '';
+    if (player.photo) return player.photo;
+    return getTeamDefaultPhoto(player.teamId);
+  }
+
   function makePlayer(player, overrides = {}) {
     const name = splitName(player.fullName);
     return {
@@ -40,7 +54,7 @@
       displayName: getPlayerDisplayName(player.fullName),
       birthDate: player.birthDate || '',
       registrationAddress: player.registrationAddress || '',
-      photo: player.photo || '',
+      photo: player.photo || getTeamDefaultPhoto(player.teamId),
       role: player.role || 'не указано',
       roleKey: player.roleKey || 'unknown',
       height: player.height || '',
@@ -218,7 +232,9 @@
 
   window.SetkaPlayerNames = {
     getFullName,
-    getPlayerDisplayName
+    getPlayerDisplayName,
+    getPlayerPhoto,
+    getTeamDefaultPhoto
   };
 
   window.SetkaTeams = {
@@ -230,6 +246,8 @@
     getActiveTeamId,
     setActiveTeamId,
     getFullName,
-    getPlayerDisplayName
+    getPlayerDisplayName,
+    getPlayerPhoto,
+    getTeamDefaultPhoto
   };
 })();

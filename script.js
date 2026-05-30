@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.05.30.3';
+  const APP_VERSION = '2026.05.30.5';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -209,6 +209,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lastName && firstName) return `${lastName} ${firstName}`;
     const parts = String(player?.fullName || player?.name || '').trim().split(/\s+/).filter(Boolean);
     return parts.slice(0, 2).join(' ') || getFullName(player);
+  }
+
+  function getPlayerPhoto(player) {
+    if (!player) return '';
+    if (window.SetkaPlayerNames?.getPlayerPhoto) {
+      return window.SetkaPlayerNames.getPlayerPhoto(player);
+    }
+    if (player.photo) return player.photo;
+    if (player.teamId === 'robotech') return 'assets/placeholders/robotech-default.png';
+    if (player.teamId === 'robotech_2') return 'assets/placeholders/robotech2-default.png';
+    return '';
   }
 
   function getShortName(player) {
@@ -717,11 +728,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAvatar(player, size) {
-    if (player.photo) {
-      return `<img class="avatar ${size}" src="${escapeHtml(player.photo)}" alt="" />`;
+    const photo = getPlayerPhoto(player);
+    if (photo) {
+      return `<img class="avatar ${size}" src="${escapeHtml(photo)}" alt="" loading="lazy" />`;
     }
 
-    return `<span class="avatar ${size}" aria-hidden="true">${player.number}</span>`;
+    return `<span class="avatar ${size}" aria-hidden="true">${escapeHtml(player?.number || '')}</span>`;
   }
 
   function openPlayer(playerId) {
@@ -1275,9 +1287,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderStatsPanel() {
     const match = state.currentMatch;
-    $('#stats-match-name').textContent = match ? `${TEAM_DATA.name} — ${match.opponent}` : TEAM_DATA.name;
+    $('#stats-match-name').textContent = match ? match.opponent : TEAM_DATA.name;
     $('#stats-set-score').textContent = match
-      ? `${formatDate(match.date)} · ${match.status || 'идёт матч'}`
+      ? `${match.finalScore && match.finalScore !== '—' ? `Счёт ${match.finalScore}` : TEAM_DATA.name} · ${match.status || 'идёт матч'}`
       : `Партия ${state.currentSet}`;
     renderSetPicker();
     const finishButton = $('#finish-match-button');
@@ -1343,6 +1355,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const cell = document.createElement('div');
       cell.className = `stats-cell stats-action-cell result-count-${group.results.length}`;
       cell.setAttribute('role', 'cell');
+      cell.dataset.actionLabel = group.name;
 
       group.results.forEach((result) => {
         const button = document.createElement('button');
@@ -1387,6 +1400,7 @@ document.addEventListener('DOMContentLoaded', () => {
       playerNumber: player.number,
       playerName: getPlayerDisplayName(player),
       playerRole: player.role,
+      playerPhoto: getPlayerPhoto(player),
       actionType: group.type,
       actionName: group.name,
       actionResult: result.code,
@@ -1960,15 +1974,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderActionStatsRow(stats) {
     if (!stats) return '';
     if (stats.type === 'error') {
-      return `<tr><td>${stats.name}</td><td>${stats.total}</td><td colspan="3">Всего ошибок</td></tr>`;
+      return `<tr><td data-label="Действие">${stats.name}</td><td data-label="Всего">${stats.total}</td><td data-label="Итог" colspan="3">Всего ошибок</td></tr>`;
     }
     return `
       <tr>
-        <td>${stats.name}</td>
-        <td>${stats.total}</td>
-        <td>${stats.plus} · ${window.SetkaStatsCore.formatPercent(stats.plusPercent)}</td>
-        <td>${stats.minus} · ${window.SetkaStatsCore.formatPercent(stats.minusPercent)}</td>
-        <td>${stats.mode === 'triple' ? `${stats.neutral} · ${window.SetkaStatsCore.formatPercent(stats.neutralPercent)}` : '—'}</td>
+        <td data-label="Действие">${stats.name}</td>
+        <td data-label="Всего">${stats.total}</td>
+        <td data-label="Плюс">${stats.plus} · ${window.SetkaStatsCore.formatPercent(stats.plusPercent)}</td>
+        <td data-label="Минус">${stats.minus} · ${window.SetkaStatsCore.formatPercent(stats.minusPercent)}</td>
+        <td data-label="Средне">${stats.mode === 'triple' ? `${stats.neutral} · ${window.SetkaStatsCore.formatPercent(stats.neutralPercent)}` : '—'}</td>
       </tr>
     `;
   }
@@ -2121,11 +2135,11 @@ document.addEventListener('DOMContentLoaded', () => {
       ${match.coachComment ? `<section class="results-section"><div class="results-section-head"><h2>Комментарий тренера</h2></div><p class="muted">${escapeHtml(match.coachComment)}</p></section>` : ''}
 
       ${renderTeamStatsBlock(teamStats, 'Команда')}
-      ${renderRosterBlock(match)}
-      ${renderPlayersBlock(playerStats, match.id)}
       ${renderRolesBlock(roleStats, match.id)}
       ${renderSetsBlock(setStats)}
       ${renderBestBlock(best)}
+      ${renderRosterBlock(match)}
+      ${renderPlayersBlock(playerStats, match.id)}
       ${renderEventJournal(match)}
     `;
   }
@@ -2155,8 +2169,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return `
       <div class="roster-group">
         <h3>${escapeHtml(title)}</h3>
-        ${players.length ? `<div class="mini-list">${players.map((player) => `<span>№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))} · ${escapeHtml(player.role)}</span>`).join('')}</div>` : '<p class="muted">Нет данных</p>'}
+        ${players.length ? `<div class="mini-list">${players.map(renderRosterMiniPlayer).join('')}</div>` : '<p class="muted">Нет данных</p>'}
       </div>
+    `;
+  }
+
+  function renderRosterMiniPlayer(player) {
+    return `
+      <span class="mini-player">
+        ${renderAvatar(player, 'tiny')}
+        <span>
+          <strong>№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))}</strong>
+          <small>${escapeHtml(player.role)}</small>
+        </span>
+      </span>
     `;
   }
 
@@ -2164,27 +2190,49 @@ document.addEventListener('DOMContentLoaded', () => {
     return `
       <details class="results-section" open>
         <summary>Игроки</summary>
+        <div class="player-result-cards">
+          ${players.map((player) => renderPlayerResultCard(player, matchId)).join('')}
+        </div>
         <div class="table-scroll">
           <table class="stats-table player-stats-table">
             <thead><tr><th>Игрок</th><th>Статус</th><th>Действий</th><th>Подача</th><th>Приём</th><th>Атака</th><th>Блок</th><th>Защита</th><th>Ошибки</th></tr></thead>
             <tbody>
               ${players.map((player) => `
                 <tr>
-                  <td><button class="table-link" type="button" data-results-action="open-player-result" data-match-id="${escapeHtml(matchId)}" data-player-id="${escapeHtml(player.playerId)}">№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))}<br><small>${escapeHtml(player.role)}</small></button></td>
-                  <td>${escapeHtml(player.status)}</td>
-                  <td>${player.totalActions}</td>
-                  <td>${window.SetkaStatsCore.summarizeActionLine(player.byAction.serve)}</td>
-                  <td>${window.SetkaStatsCore.summarizeActionLine(player.byAction.receive)}</td>
-                  <td>${window.SetkaStatsCore.summarizeActionLine(player.byAction.attack)}</td>
-                  <td>${window.SetkaStatsCore.summarizeActionLine(player.byAction.block)}</td>
-                  <td>${window.SetkaStatsCore.summarizeActionLine(player.byAction.defense)}</td>
-                  <td>${player.errors}</td>
+                  <td data-label="Игрок"><button class="table-link" type="button" data-results-action="open-player-result" data-match-id="${escapeHtml(matchId)}" data-player-id="${escapeHtml(player.playerId)}">№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))}<br><small>${escapeHtml(player.role)}</small></button></td>
+                  <td data-label="Статус">${escapeHtml(player.status)}</td>
+                  <td data-label="Действий">${player.totalActions}</td>
+                  <td data-label="Подача">${window.SetkaStatsCore.summarizeActionLine(player.byAction.serve)}</td>
+                  <td data-label="Приём">${window.SetkaStatsCore.summarizeActionLine(player.byAction.receive)}</td>
+                  <td data-label="Атака">${window.SetkaStatsCore.summarizeActionLine(player.byAction.attack)}</td>
+                  <td data-label="Блок">${window.SetkaStatsCore.summarizeActionLine(player.byAction.block)}</td>
+                  <td data-label="Защита">${window.SetkaStatsCore.summarizeActionLine(player.byAction.defense)}</td>
+                  <td data-label="Ошибки">${player.errors}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
       </details>
+    `;
+  }
+
+  function renderPlayerResultCard(player, matchId) {
+    return `
+      <button class="player-result-card" type="button" data-results-action="open-player-result" data-match-id="${escapeHtml(matchId)}" data-player-id="${escapeHtml(player.playerId)}">
+        ${renderAvatar(player, 'small')}
+        <span class="player-result-main">
+          <strong>№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))}</strong>
+          <small>${escapeHtml(player.role || 'амплуа не указано')} · ${escapeHtml(player.status || 'статус не указан')}</small>
+        </span>
+        <span class="player-result-total">${player.totalActions}</span>
+        <span class="player-result-line">
+          <span>Подача: ${window.SetkaStatsCore.summarizeActionLine(player.byAction.serve)}</span>
+          <span>Приём: ${window.SetkaStatsCore.summarizeActionLine(player.byAction.receive)}</span>
+          <span>Атака: ${window.SetkaStatsCore.summarizeActionLine(player.byAction.attack)}</span>
+          <span>Ошибки: ${player.errors}</span>
+        </span>
+      </button>
     `;
   }
 
@@ -2269,6 +2317,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="secondary-button" type="button" data-results-action="delete-last-event" data-match-id="${escapeHtml(match.id)}">Удалить последнее</button>
         </div>
         ${events.length ? `
+          <div class="event-card-list">
+            ${events.map(renderEventCard).join('')}
+          </div>
           <div class="table-scroll journal-scroll">
             <table class="stats-table">
               <thead><tr><th>Время</th><th>Партия</th><th>Игрок</th><th>Амплуа</th><th>Действие</th><th>Результат</th><th></th></tr></thead>
@@ -2297,14 +2348,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const time = event.time ? new Date(event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
     return `
       <tr>
-        <td>${escapeHtml(time)}</td>
-        <td>${escapeHtml(event.setNumber || 'не указана')}</td>
-        <td>${escapeHtml(getPlayerDisplayName(event.playerName))}</td>
-        <td>${escapeHtml(event.playerRole)}</td>
-        <td>${escapeHtml(event.actionName || event.actionType)}</td>
-        <td>${escapeHtml(event.resultLabel || event.actionResult)}</td>
-        <td><button class="table-danger" type="button" data-results-action="delete-event" data-event-id="${escapeHtml(event.id)}">Удалить</button></td>
+        <td data-label="Время">${escapeHtml(time)}</td>
+        <td data-label="Партия">${escapeHtml(event.setNumber || 'не указана')}</td>
+        <td data-label="Игрок">${escapeHtml(getPlayerDisplayName(event.playerName))}</td>
+        <td data-label="Амплуа">${escapeHtml(event.playerRole)}</td>
+        <td data-label="Действие">${escapeHtml(event.actionName || event.actionType)}</td>
+        <td data-label="Результат">${escapeHtml(event.resultLabel || event.actionResult)}</td>
+        <td data-label="Действие"><button class="table-danger" type="button" data-results-action="delete-event" data-event-id="${escapeHtml(event.id)}">Удалить</button></td>
       </tr>
+    `;
+  }
+
+  function renderEventCard(event) {
+    const time = event.time ? new Date(event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+    return `
+      <article class="event-card">
+        ${renderAvatar({
+          teamId: event.teamId || TEAM_DATA.id,
+          photo: event.playerPhoto,
+          number: event.playerNumber || ''
+        }, 'tiny')}
+        <div>
+          <strong>${escapeHtml(getPlayerDisplayName(event.playerName))}</strong>
+          <small>${escapeHtml(event.playerRole || 'амплуа не указано')}</small>
+        </div>
+        <span>${escapeHtml(event.actionName || event.actionType)} · ${escapeHtml(event.resultLabel || event.actionResult)}</span>
+        <small>${escapeHtml(time)} · ${event.setNumber ? `Партия ${escapeHtml(event.setNumber)}` : 'Партия не указана'}</small>
+        <button class="table-danger" type="button" data-results-action="delete-event" data-event-id="${escapeHtml(event.id)}">Удалить</button>
+      </article>
     `;
   }
 
@@ -2346,7 +2417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="table-scroll">
           <table class="stats-table">
             <thead><tr><th>Дата</th><th>Соперник</th><th>Действий</th><th>Ошибки</th></tr></thead>
-            <tbody>${dynamics.map((item) => `<tr><td>${escapeHtml(formatDate(item.date))}</td><td>${escapeHtml(item.opponent)}</td><td>${item.totalActions}</td><td>${item.teamStats.errors.total}</td></tr>`).join('')}</tbody>
+            <tbody>${dynamics.map((item) => `<tr><td data-label="Дата">${escapeHtml(formatDate(item.date))}</td><td data-label="Соперник">${escapeHtml(item.opponent)}</td><td data-label="Действий">${item.totalActions}</td><td data-label="Ошибки">${item.teamStats.errors.total}</td></tr>`).join('')}</tbody>
           </table>
         </div>
       </section>
@@ -2413,7 +2484,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="table-scroll">
             <table class="stats-table">
               <thead><tr><th>Матч</th><th>Действий</th><th>Подача +</th><th>Приём +</th><th>Атака +</th><th>Блок +</th><th>Защита +</th><th>Ошибки</th></tr></thead>
-              <tbody>${comparison.rows.map((row) => `<tr><td>${escapeHtml(formatDate(row.date))}<br><small>${escapeHtml(row.opponent)}</small></td><td>${row.totalActions}</td><td>${window.SetkaStatsCore.formatPercent(row.serve.plusPercent)}</td><td>${window.SetkaStatsCore.formatPercent(row.receive.plusPercent)}</td><td>${window.SetkaStatsCore.formatPercent(row.attack.plusPercent)}</td><td>${window.SetkaStatsCore.formatPercent(row.block.plusPercent)}</td><td>${window.SetkaStatsCore.formatPercent(row.defense.plusPercent)}</td><td>${row.errors.total}</td></tr>`).join('')}</tbody>
+              <tbody>${comparison.rows.map((row) => `<tr><td data-label="Матч">${escapeHtml(formatDate(row.date))}<br><small>${escapeHtml(row.opponent)}</small></td><td data-label="Действий">${row.totalActions}</td><td data-label="Подача +">${window.SetkaStatsCore.formatPercent(row.serve.plusPercent)}</td><td data-label="Приём +">${window.SetkaStatsCore.formatPercent(row.receive.plusPercent)}</td><td data-label="Атака +">${window.SetkaStatsCore.formatPercent(row.attack.plusPercent)}</td><td data-label="Блок +">${window.SetkaStatsCore.formatPercent(row.block.plusPercent)}</td><td data-label="Защита +">${window.SetkaStatsCore.formatPercent(row.defense.plusPercent)}</td><td data-label="Ошибки">${row.errors.total}</td></tr>`).join('')}</tbody>
             </table>
           </div>
         </section>

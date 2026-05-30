@@ -21,6 +21,11 @@
     return parts.slice(0, 2).join(' ') || String(value || '').trim();
   }
 
+  function getPlayerPhoto(player) {
+    if (window.SetkaPlayerNames?.getPlayerPhoto) return window.SetkaPlayerNames.getPlayerPhoto(player);
+    return player?.photo || '';
+  }
+
   function actionTable(teamStats) {
     const rows = window.SetkaStatsCore.ACTIONS.map((action) => {
       const stats = teamStats.byAction[action.type];
@@ -58,6 +63,7 @@
           th { background: #eef4f0; }
           .meta { color: #555; margin-bottom: 18px; }
           .brand { font-weight: 700; color: #0b3b36; }
+          .pdf-avatar { width: 34px; height: 34px; object-fit: cover; border-radius: 6px; vertical-align: middle; margin-right: 6px; }
           @media print { body { padding: 18mm; } button { display: none; } }
         </style>
       </head>
@@ -125,9 +131,9 @@
         ${row('Статус', match.status)}
         ${row('Комментарий тренера', match.coachComment)}
       </tbody></table>`,
-      `<h2>Состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th><th>Статус</th></tr></thead><tbody>${(match.roster || []).map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td><td>${escapeHtml(player.status)}</td></tr>`).join('')}</tbody></table>`,
-      `<h2>Стартовый состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${starters.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
-      `<h2>Скамейка</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${bench.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th><th>Статус</th></tr></thead><tbody>${(match.roster || []).map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${getPlayerPhoto(player) ? `<img class="pdf-avatar" src="${escapeHtml(getPlayerPhoto(player))}" alt="">` : ''}${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td><td>${escapeHtml(player.status)}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Стартовый состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${starters.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${getPlayerPhoto(player) ? `<img class="pdf-avatar" src="${escapeHtml(getPlayerPhoto(player))}" alt="">` : ''}${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Скамейка</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${bench.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${getPlayerPhoto(player) ? `<img class="pdf-avatar" src="${escapeHtml(getPlayerPhoto(player))}" alt="">` : ''}${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
       `<h2>Замены</h2>${substitutions.length ? `<table><thead><tr><th>Партия</th><th>Время</th><th>Ушёл</th><th>Вышел</th></tr></thead><tbody>${substitutions.map((item) => `<tr><td>${escapeHtml(item.setNumber || '')}</td><td>${escapeHtml(item.time || '')}</td><td>${escapeHtml(playerName(item.outPlayerId))}</td><td>${escapeHtml(playerName(item.inPlayerId))}</td></tr>`).join('')}</tbody></table>` : '<p>Замены не записаны.</p>'}`,
       `<h2>Командная статистика</h2>${actionTable(teamStats)}`,
       `<h2>Игроки</h2><table><thead><tr><th>Игрок</th><th>Амплуа</th><th>Действий</th><th>Ошибки</th></tr></thead><tbody>${playerStats.map((player) => `<tr><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td><td>${player.totalActions}</td><td>${player.errors}</td></tr>`).join('')}</tbody></table>`,
@@ -167,6 +173,7 @@
     const playerStats = window.SetkaStatsCore.calculateTeamStats(playerEvents);
     const sections = [
       `<h2>Игрок</h2><table><tbody>
+        ${getPlayerPhoto(player) ? `<tr><th>Фото</th><td><img class="pdf-avatar" src="${escapeHtml(getPlayerPhoto(player))}" alt=""></td></tr>` : ''}
         ${row('ФИ', getPlayerDisplayName(player))}
         ${row('Команда', matches?.[0]?.ourTeam || player.teamName || '')}
         ${row('Амплуа', player.role)}

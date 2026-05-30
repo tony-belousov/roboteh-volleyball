@@ -22,6 +22,11 @@
     return parts.slice(0, 2).join(' ') || String(value || '').trim();
   }
 
+  function getPlayerPhoto(player) {
+    if (window.SetkaPlayerNames?.getPlayerPhoto) return window.SetkaPlayerNames.getPlayerPhoto(player);
+    return player?.photo || '';
+  }
+
   function normalizeEvent(event) {
     if (!event || typeof event !== 'object') return null;
     const timestamp = event.timestamp || event.time || new Date().toISOString();
@@ -35,6 +40,10 @@
       playerNumber: event.playerNumber || event.number || '',
       playerName: getPlayerDisplayName(event.playerName || event.name || ''),
       playerRole: event.playerRole || event.role || '',
+      playerPhoto: getPlayerPhoto({
+        photo: event.playerPhoto || event.photo || '',
+        teamId: event.teamId || ''
+      }),
       setNumber,
       time: event.time || timestamp,
       actionType: event.actionType || event.type || event.action || '',

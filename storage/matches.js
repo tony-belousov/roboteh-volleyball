@@ -39,6 +39,11 @@
     return parts.slice(0, 2).join(' ') || fullName || '';
   }
 
+  function getPlayerPhoto(player) {
+    if (window.SetkaPlayerNames?.getPlayerPhoto) return window.SetkaPlayerNames.getPlayerPhoto(player);
+    return player?.photo || '';
+  }
+
   function playerSnapshot(player, status) {
     return {
       playerId: player.id,
@@ -54,19 +59,21 @@
       roleKey: player.roleKey || '',
       height: player.height || '',
       birthDate: player.birthDate || '',
-      photo: player.photo || '',
+      photo: getPlayerPhoto(player),
       registrationAddress: player.registrationAddress || '',
       status
     };
   }
 
-  function normalizeRosterPlayer(player) {
+  function normalizeRosterPlayer(player, teamId = '') {
     if (!player || typeof player !== 'object') return player;
     const fullName = getFullName(player);
+    const teamPlayer = { ...player, teamId: player.teamId || teamId };
     return {
       ...player,
       name: getPlayerDisplayName(player),
-      fullName
+      fullName,
+      photo: getPlayerPhoto(teamPlayer)
     };
   }
 
@@ -75,7 +82,11 @@
     return {
       ...event,
       teamId: event.teamId || teamId || '',
-      playerName: getPlayerDisplayName(event.playerName || event.name || '')
+      playerName: getPlayerDisplayName(event.playerName || event.name || ''),
+      playerPhoto: getPlayerPhoto({
+        photo: event.playerPhoto || event.photo || '',
+        teamId: event.teamId || teamId || ''
+      })
     };
   }
 
@@ -175,10 +186,10 @@
       coachComment: match.coachComment || match.comment || '',
       status: match.status || (matchEvents.length > 0 ? 'сохранён локально' : 'черновик'),
       setNumber: Math.min(5, Math.max(1, Number(match.setNumber || match.currentSet || 1) || 1)),
-      roster: Array.isArray(match.roster) && match.roster.length ? match.roster.map(normalizeRosterPlayer) : [],
+      roster: Array.isArray(match.roster) && match.roster.length ? match.roster.map((player) => normalizeRosterPlayer(player, teamId)) : [],
       lineup: startingLineup,
       startingLineup,
-      bench: Array.isArray(match.bench) ? match.bench.map(normalizeRosterPlayer) : [],
+      bench: Array.isArray(match.bench) ? match.bench.map((player) => normalizeRosterPlayer(player, teamId)) : [],
       substitutions: matchSubstitutions,
       events: matchEvents,
       createdAt: match.createdAt || new Date().toISOString(),
@@ -288,6 +299,7 @@
             playerNumber: player.number,
             playerName: getPlayerDisplayName(player),
             playerRole: player.role,
+            playerPhoto: getPlayerPhoto(player),
             setNumber: 1 + ((playerIndex + i) % 3),
             time: new Date(base + events.length * 45000).toISOString(),
             actionType: type,

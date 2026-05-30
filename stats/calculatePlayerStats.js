@@ -8,6 +8,11 @@
     return parts.slice(0, 2).join(' ') || String(value || '').trim();
   }
 
+  function getPlayerPhoto(player) {
+    if (window.SetkaPlayerNames?.getPlayerPhoto) return window.SetkaPlayerNames.getPlayerPhoto(player);
+    return player?.photo || '';
+  }
+
   function calculatePlayerStats(matchOrMatches, teamId = '') {
     const matches = (Array.isArray(matchOrMatches) ? matchOrMatches : [matchOrMatches].filter(Boolean))
       .filter((match) => !teamId || !match.teamId || match.teamId === teamId);
@@ -27,7 +32,7 @@
             roleKey: player.roleKey || '',
             height: player.height || '',
             birthDate: player.birthDate || '',
-            photo: player.photo || '',
+            photo: getPlayerPhoto(player),
             status: player.status || 'запас',
             matches: 0,
             totalActions: 0,
@@ -54,7 +59,10 @@
             roleKey: '',
             height: '',
             birthDate: '',
-            photo: '',
+            photo: getPlayerPhoto({
+              photo: event.playerPhoto || '',
+              teamId: event.teamId || match.teamId || ''
+            }),
             status: 'выходил на замену',
             matches: 0,
             totalActions: 0,
