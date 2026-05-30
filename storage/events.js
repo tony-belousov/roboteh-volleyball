@@ -16,6 +16,12 @@
     localStorage.setItem(key, JSON.stringify(value));
   }
 
+  function getPlayerDisplayName(value) {
+    if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(value);
+    const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || String(value || '').trim();
+  }
+
   function normalizeEvent(event) {
     if (!event || typeof event !== 'object') return null;
     const timestamp = event.timestamp || event.time || new Date().toISOString();
@@ -27,7 +33,7 @@
       matchId: String(event.matchId || event.matchID || ''),
       playerId: String(event.playerId || event.player || ''),
       playerNumber: event.playerNumber || event.number || '',
-      playerName: event.playerName || event.name || '',
+      playerName: getPlayerDisplayName(event.playerName || event.name || ''),
       playerRole: event.playerRole || event.role || '',
       setNumber,
       time: event.time || timestamp,

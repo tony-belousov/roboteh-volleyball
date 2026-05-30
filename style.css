@@ -92,8 +92,15 @@ textarea:focus-visible {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #10241f;
+  background:
+    linear-gradient(135deg, rgba(255, 199, 44, 0.12), transparent 38%),
+    #10241f;
   box-shadow: var(--shadow);
+  animation: updateToastIn 180ms ease-out;
+}
+
+.pwa-update > div:first-child {
+  min-width: 0;
 }
 
 .pwa-update span {
@@ -101,6 +108,13 @@ textarea:focus-visible {
   margin-top: 2px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.pwa-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .pwa-update button,
@@ -121,6 +135,37 @@ textarea:focus-visible {
   padding: 0 16px;
   background: var(--accent);
   color: #05120e;
+}
+
+.pwa-update .pwa-update-later {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
+.pwa-update button:disabled {
+  opacity: 0.72;
+}
+
+@keyframes updateToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 420px) {
+  .pwa-update {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pwa-update-actions {
+    justify-content: flex-end;
+  }
 }
 
 .welcome-screen,
@@ -384,17 +429,20 @@ textarea:focus-visible {
 
 .team-hero {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(18, 40, 34, 0.88);
+  background:
+    linear-gradient(135deg, rgba(255, 199, 44, 0.14), transparent 42%),
+    linear-gradient(145deg, rgba(13, 28, 25, 0.96), rgba(18, 40, 34, 0.9));
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
 }
 
 .team-logo {
-  width: 76px;
-  height: 76px;
+  width: 88px;
+  height: 88px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
@@ -405,6 +453,52 @@ textarea:focus-visible {
   color: #04110d;
   font-size: 42px;
   font-weight: 950;
+  overflow: hidden;
+}
+
+.team-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.team-logo-image.compact {
+  padding: 6px;
+}
+
+.team-hero-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.team-profile-badge {
+  width: max-content;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 199, 44, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 199, 44, 0.1);
+  color: #ffdf7c;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.team-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.team-hero-stats span {
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .team-hero h2,
@@ -417,6 +511,12 @@ textarea:focus-visible {
 .team-hero p {
   margin: 4px 0 0;
   color: var(--muted);
+}
+
+.team-quick-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .info-section {
@@ -472,6 +572,30 @@ textarea:focus-visible {
   min-height: 64px;
   padding: 8px 10px;
   text-align: left;
+}
+
+.player-row {
+  border-left: 4px solid rgba(255, 255, 255, 0.12);
+}
+
+.player-row.role-opposite {
+  border-left-color: rgba(41, 211, 145, 0.82);
+}
+
+.player-row.role-outside {
+  border-left-color: rgba(86, 182, 255, 0.82);
+}
+
+.player-row.role-middle {
+  border-left-color: rgba(255, 209, 102, 0.86);
+}
+
+.player-row.role-setter {
+  border-left-color: rgba(184, 139, 255, 0.82);
+}
+
+.player-row.role-libero {
+  border-left-color: rgba(255, 107, 107, 0.82);
 }
 
 .player-status {
@@ -585,6 +709,15 @@ textarea:focus-visible {
   gap: 14px;
 }
 
+.player-card-hero {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 18px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
 .player-photo {
   display: grid;
   place-items: center;
@@ -593,6 +726,14 @@ textarea:focus-visible {
 
 .player-card-title {
   text-align: center;
+}
+
+.player-card-title span {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .player-card-title h2 {
@@ -634,6 +775,30 @@ textarea:focus-visible {
 .season-stats {
   display: grid;
   gap: 10px;
+}
+
+.player-match-list {
+  display: grid;
+  gap: 8px;
+}
+
+.player-match-list h3 {
+  margin: 4px 0 0;
+  font-size: 16px;
+}
+
+.player-match-row {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.player-match-row span,
+.player-match-row small {
+  color: var(--muted);
 }
 
 .season-grid {

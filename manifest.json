@@ -1,8 +1,9 @@
 {
   "name": "Сетка",
   "short_name": "Сетка",
-  "start_url": ".",
-  "scope": ".",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#071310",

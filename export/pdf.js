@@ -12,6 +12,15 @@
     return `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value || '—')}</td></tr>`;
   }
 
+  function getPlayerDisplayName(player) {
+    if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(player);
+    const value = typeof player === 'string'
+      ? player
+      : (player?.name || player?.fullName || `${player?.lastName || ''} ${player?.firstName || ''}`.trim());
+    const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || String(value || '').trim();
+  }
+
   function actionTable(teamStats) {
     const rows = window.SetkaStatsCore.ACTIONS.map((action) => {
       const stats = teamStats.byAction[action.type];
@@ -96,7 +105,10 @@
     const starters = (match.roster || []).filter((player) => player.status === 'старт');
     const bench = Array.isArray(match.bench) && match.bench.length ? match.bench : (match.roster || []).filter((player) => player.status === 'запас');
     const substitutions = match.substitutions || [];
-    const playerName = (playerId) => (match.roster || []).find((player) => (player.playerId || player.id) === playerId)?.name || playerId || '';
+    const playerName = (playerId) => {
+      const player = (match.roster || []).find((item) => (item.playerId || item.id) === playerId);
+      return player ? getPlayerDisplayName(player) : playerId || '';
+    };
 
     const sections = [
       `<h2>Матч</h2><table><tbody>
@@ -113,12 +125,12 @@
         ${row('Статус', match.status)}
         ${row('Комментарий тренера', match.coachComment)}
       </tbody></table>`,
-      `<h2>Состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th><th>Статус</th></tr></thead><tbody>${(match.roster || []).map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(player.name)}</td><td>${escapeHtml(player.role)}</td><td>${escapeHtml(player.status)}</td></tr>`).join('')}</tbody></table>`,
-      `<h2>Стартовый состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${starters.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(player.name)}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
-      `<h2>Скамейка</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${bench.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(player.name)}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th><th>Статус</th></tr></thead><tbody>${(match.roster || []).map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td><td>${escapeHtml(player.status)}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Стартовый состав</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${starters.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Скамейка</h2><table><thead><tr><th>№</th><th>Игрок</th><th>Амплуа</th></tr></thead><tbody>${bench.map((player) => `<tr><td>${escapeHtml(player.number)}</td><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td></tr>`).join('')}</tbody></table>`,
       `<h2>Замены</h2>${substitutions.length ? `<table><thead><tr><th>Партия</th><th>Время</th><th>Ушёл</th><th>Вышел</th></tr></thead><tbody>${substitutions.map((item) => `<tr><td>${escapeHtml(item.setNumber || '')}</td><td>${escapeHtml(item.time || '')}</td><td>${escapeHtml(playerName(item.outPlayerId))}</td><td>${escapeHtml(playerName(item.inPlayerId))}</td></tr>`).join('')}</tbody></table>` : '<p>Замены не записаны.</p>'}`,
       `<h2>Командная статистика</h2>${actionTable(teamStats)}`,
-      `<h2>Игроки</h2><table><thead><tr><th>Игрок</th><th>Амплуа</th><th>Действий</th><th>Ошибки</th></tr></thead><tbody>${playerStats.map((player) => `<tr><td>${escapeHtml(player.name)}</td><td>${escapeHtml(player.role)}</td><td>${player.totalActions}</td><td>${player.errors}</td></tr>`).join('')}</tbody></table>`,
+      `<h2>Игроки</h2><table><thead><tr><th>Игрок</th><th>Амплуа</th><th>Действий</th><th>Ошибки</th></tr></thead><tbody>${playerStats.map((player) => `<tr><td>${escapeHtml(getPlayerDisplayName(player))}</td><td>${escapeHtml(player.role)}</td><td>${player.totalActions}</td><td>${player.errors}</td></tr>`).join('')}</tbody></table>`,
       `<h2>Амплуа</h2><table><thead><tr><th>Амплуа</th><th>Игроков</th><th>Действий</th><th>Вклад</th></tr></thead><tbody>${roleStats.map((role) => `<tr><td>${escapeHtml(role.role)}</td><td>${role.playerCount}</td><td>${role.totalActions}</td><td>${window.SetkaStatsCore.formatPercent(role.contributionPercent)}</td></tr>`).join('')}</tbody></table>`,
       `<h2>Партии</h2>${setStats.hasSetData ? `<table><thead><tr><th>Партия</th><th>Счёт</th><th>Действий</th></tr></thead><tbody>${setStats.sets.map((set) => `<tr><td>${escapeHtml(set.setNumber)}</td><td>${escapeHtml(set.score)}</td><td>${set.totalActions}</td></tr>`).join('')}</tbody></table>` : '<p>Статистика по партиям появится после записи партий.</p>'}`,
       `<h2>Лучшие показатели</h2><p>Самый активный игрок: ${escapeHtml(best.mostActive?.name || 'Недостаточно данных')}</p><p>Лучший матч команды: ${escapeHtml(best.bestTeamMatch?.opponent || 'Недостаточно данных')}</p>`,
@@ -155,7 +167,7 @@
     const playerStats = window.SetkaStatsCore.calculateTeamStats(playerEvents);
     const sections = [
       `<h2>Игрок</h2><table><tbody>
-        ${row('ФИ', player.name)}
+        ${row('ФИ', getPlayerDisplayName(player))}
         ${row('Команда', matches?.[0]?.ourTeam || player.teamName || '')}
         ${row('Амплуа', player.role)}
         ${row('Номер', player.number)}
@@ -167,7 +179,7 @@
       `<h2>Статистика по действиям</h2>${actionTable(playerStats)}`,
       `<h2>Динамика</h2><table><thead><tr><th>Дата</th><th>Соперник</th><th>Действий</th></tr></thead><tbody>${dynamics.map((item) => `<tr><td>${escapeHtml(item.date)}</td><td>${escapeHtml(item.opponent)}</td><td>${item.totalActions}</td></tr>`).join('')}</tbody></table>`
     ];
-    return openPrintable(`Сетка · игрок ${player.name}`, sections);
+    return openPrintable(`Сетка · игрок ${getPlayerDisplayName(player)}`, sections);
   }
 
   function exportComparePdf(comparison) {

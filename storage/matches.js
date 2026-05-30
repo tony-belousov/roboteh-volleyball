@@ -32,13 +32,20 @@
     return player.fullName || `${player.lastName || ''} ${player.firstName || ''}`.trim() || player.name || '';
   }
 
+  function getPlayerDisplayName(player) {
+    if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(player);
+    const fullName = typeof player === 'string' ? player : getFullName(player);
+    const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || fullName || '';
+  }
+
   function playerSnapshot(player, status) {
     return {
       playerId: player.id,
       id: player.id,
       teamId: player.teamId || '',
       number: player.number || '',
-      name: getFullName(player),
+      name: getPlayerDisplayName(player),
       fullName: getFullName(player),
       lastName: player.lastName || '',
       firstName: player.firstName || '',
@@ -50,6 +57,25 @@
       photo: player.photo || '',
       registrationAddress: player.registrationAddress || '',
       status
+    };
+  }
+
+  function normalizeRosterPlayer(player) {
+    if (!player || typeof player !== 'object') return player;
+    const fullName = getFullName(player);
+    return {
+      ...player,
+      name: getPlayerDisplayName(player),
+      fullName
+    };
+  }
+
+  function normalizeEventName(event, teamId) {
+    if (!event || typeof event !== 'object') return event;
+    return {
+      ...event,
+      teamId: event.teamId || teamId || '',
+      playerName: getPlayerDisplayName(event.playerName || event.name || '')
     };
   }
 
@@ -109,9 +135,9 @@
 
     const storedEvents = events.filter((event) => event.matchId === id && (!event.teamId || event.teamId === teamId));
     const matchEvents = storedEvents.length
-      ? storedEvents.map((event) => ({ ...event, teamId: event.teamId || teamId }))
+      ? storedEvents.map((event) => normalizeEventName(event, teamId))
       : Array.isArray(match.events)
-        ? match.events.filter((event) => !event.teamId || event.teamId === teamId).map((event) => ({ ...event, teamId: event.teamId || teamId }))
+        ? match.events.filter((event) => !event.teamId || event.teamId === teamId).map((event) => normalizeEventName(event, teamId))
         : [];
     const storedSubstitutions = substitutions.filter((item) => item.matchId === id && (!item.teamId || item.teamId === teamId));
     const matchSubstitutions = storedSubstitutions.length
@@ -149,10 +175,10 @@
       coachComment: match.coachComment || match.comment || '',
       status: match.status || (matchEvents.length > 0 ? 'сохранён локально' : 'черновик'),
       setNumber: Math.min(5, Math.max(1, Number(match.setNumber || match.currentSet || 1) || 1)),
-      roster: Array.isArray(match.roster) && match.roster.length ? match.roster : [],
+      roster: Array.isArray(match.roster) && match.roster.length ? match.roster.map(normalizeRosterPlayer) : [],
       lineup: startingLineup,
       startingLineup,
-      bench: Array.isArray(match.bench) ? match.bench : [],
+      bench: Array.isArray(match.bench) ? match.bench.map(normalizeRosterPlayer) : [],
       substitutions: matchSubstitutions,
       events: matchEvents,
       createdAt: match.createdAt || new Date().toISOString(),
@@ -260,7 +286,7 @@
             matchId,
             playerId: player.id,
             playerNumber: player.number,
-            playerName: getFullName(player),
+            playerName: getPlayerDisplayName(player),
             playerRole: player.role,
             setNumber: 1 + ((playerIndex + i) % 3),
             time: new Date(base + events.length * 45000).toISOString(),

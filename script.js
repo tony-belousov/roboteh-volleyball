@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.05.30.1';
+  const APP_VERSION = '2026.05.30.3';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -202,10 +202,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${player.lastName} ${player.firstName}`;
   }
 
+  function getPlayerDisplayName(player) {
+    if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(player);
+    const lastName = player?.lastName || '';
+    const firstName = player?.firstName || '';
+    if (lastName && firstName) return `${lastName} ${firstName}`;
+    const parts = String(player?.fullName || player?.name || '').trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || getFullName(player);
+  }
+
   function getShortName(player) {
     const lastName = player.lastName || String(player.fullName || '').split(/\s+/)[0] || '';
     const firstName = player.firstName || String(player.fullName || '').split(/\s+/)[1] || '';
-    if (!lastName) return getFullName(player);
+    if (!lastName) return getPlayerDisplayName(player);
     if (!firstName) return lastName;
     return `${lastName} ${firstName.slice(0, 1)}.`;
   }
@@ -249,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
       id: player.id,
       teamId: player.teamId || TEAM_DATA.id,
       number: player.number,
-      name: getFullName(player),
+      name: getPlayerDisplayName(player),
       fullName: getFullName(player),
       lastName: player.lastName || '',
       firstName: player.firstName || '',
@@ -522,14 +531,78 @@ document.addEventListener('DOMContentLoaded', () => {
     showScreen('placeholder');
   }
 
+  function teamLogoMarkup(team = TEAM_DATA, sizeClass = '') {
+    const className = ['team-logo-image', sizeClass].filter(Boolean).join(' ');
+    if (team.logo) {
+      return `<img class="${escapeHtml(className)}" src="${escapeHtml(team.logo)}" alt="" loading="lazy">`;
+    }
+    return `<span>${escapeHtml(team.logoText || team.name.slice(0, 1))}</span>`;
+  }
+
+  function renderTeamLogoInto(element, team = TEAM_DATA) {
+    if (!element) return;
+    element.innerHTML = teamLogoMarkup(team);
+  }
+
+  function getTeamMetrics(matches) {
+    const season = window.SetkaStatsSeason
+      ? window.SetkaStatsSeason.calculateSeasonStats(matches, TEAM_DATA.id)
+      : null;
+    const best = window.SetkaStatsBest
+      ? window.SetkaStatsBest.getBestPerformers(matches, TEAM_DATA.id)
+      : null;
+    const loadInfo = window.SetkaStorageMatches?.getLoadInfo?.() || {};
+
+    return {
+      season,
+      best,
+      hasSavedMatches: !loadInfo.usedMock,
+      matchCount: matches.length,
+      sourceLabel: loadInfo.usedMock ? 'демо-данные' : 'сохранённые матчи'
+    };
+  }
+
+  function renderTeamQuickMetrics(metrics) {
+    const target = $('#team-quick-metrics');
+    if (!target) return;
+
+    const season = metrics.season;
+    const bestName = metrics.best?.mostActive?.totalActions > 0
+      ? getPlayerDisplayName(metrics.best.mostActive)
+      : 'Недостаточно данных';
+
+    target.innerHTML = `
+      ${metricCard('Игроков', TEAM_DATA.players.length, TEAM_DATA.name)}
+      ${metricCard('Матчей', metrics.matchCount, metrics.sourceLabel)}
+      ${metricCard('Победы / поражения', season ? `${season.wins} / ${season.losses}` : '0 / 0')}
+      ${metricCard('Действий', season?.totalActions || 0)}
+      ${metricCard('Ошибки', season?.teamStats?.errors?.total || 0)}
+      ${metricCard('Активный игрок', bestName)}
+    `;
+  }
+
   function renderTeam() {
-    $('#team-logo').textContent = TEAM_DATA.logoText;
+    const matches = getActiveTeamMatches();
+    const metrics = getTeamMetrics(matches);
+
+    renderTeamLogoInto($('#team-logo'), TEAM_DATA);
+    $('#team-profile-badge').textContent = `Профиль: ${TEAM_DATA.name}`;
     $('#team-name').textContent = TEAM_DATA.name;
     $('#team-subtitle').textContent = TEAM_DATA.description || TEAM_DATA.subtitle;
+    $('#team-hero-stats').innerHTML = `
+      <span>${TEAM_DATA.players.length} игроков</span>
+      <span>${metrics.matchCount} матчей</span>
+      <span>${metrics.season?.totalActions || 0} действий</span>
+    `;
+    renderTeamQuickMetrics(metrics);
 
     const coachesList = $('#coaches-list');
     coachesList.innerHTML = '';
-    TEAM_DATA.coaches.forEach((coach) => {
+    const coaches = Array.isArray(TEAM_DATA.coaches) ? TEAM_DATA.coaches : [];
+    if (!coaches.length) {
+      coachesList.innerHTML = '<div class="results-state compact">Тренерский состав будет заполнен позже.</div>';
+    }
+    coaches.forEach((coach) => {
       const item = document.createElement('div');
       item.className = 'person-strip';
       item.innerHTML = `
@@ -541,17 +614,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const playersList = $('#players-list');
     playersList.innerHTML = '';
+    const playerStats = window.SetkaStatsPlayers
+      ? window.SetkaStatsPlayers.calculatePlayerStats(matches, TEAM_DATA.id)
+      : [];
+    const playerStatsById = new Map(playerStats.map((item) => [item.playerId, item]));
+    if (!TEAM_DATA.players.length) {
+      playersList.innerHTML = '<div class="results-state compact">В составе пока нет игроков.</div>';
+    }
     TEAM_DATA.players.forEach((player) => {
+      const seasonLine = getPlayerSeasonShortFromStats(playerStatsById.get(player.id));
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'player-row';
+      button.className = `player-row role-${player.roleKey || 'unknown'}`;
       button.innerHTML = `
         ${renderAvatar(player, 'small')}
         <span class="player-number">№${player.number}</span>
         <span class="player-main">
-          <strong>${escapeHtml(getFullName(player))}</strong>
+          <strong>${escapeHtml(getPlayerDisplayName(player))}</strong>
           <small>${escapeHtml(formatDate(player.birthDate))} · ${escapeHtml(player.role)} · ${player.height ? `${player.height} см` : 'рост не указан'}</small>
-          <small>${escapeHtml(getPlayerSeasonShort(player.id))}</small>
+          <small>${escapeHtml(seasonLine)}</small>
         </span>
         <span class="player-status">${escapeHtml(player.status || 'не указан')}</span>
       `;
@@ -559,18 +640,22 @@ document.addEventListener('DOMContentLoaded', () => {
       playersList.appendChild(button);
     });
 
-    const socials = $('#social-links');
-    socials.innerHTML = '';
-    TEAM_DATA.socials.forEach((item) => {
+    const socialsTarget = $('#social-links');
+    socialsTarget.innerHTML = '';
+    const socialLinks = Array.isArray(TEAM_DATA.socials) ? TEAM_DATA.socials : [];
+    const socialsData = socialLinks.length ? socialLinks : [{ label: 'Соцсети', value: 'Будет заполнено' }];
+    socialsData.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'link-row';
       row.innerHTML = `<span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong>`;
-      socials.appendChild(row);
+      socialsTarget.appendChild(row);
     });
 
     const contacts = $('#team-contacts');
     contacts.innerHTML = '';
-    TEAM_DATA.contacts.forEach((item) => {
+    const contactsSource = Array.isArray(TEAM_DATA.contacts) ? TEAM_DATA.contacts : [];
+    const contactsData = contactsSource.length ? contactsSource : [{ label: 'Контакты', value: 'Будет заполнено' }];
+    contactsData.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'link-row';
       row.innerHTML = `<span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.value)}</strong>`;
@@ -597,6 +682,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${playerMatches.length} матчей · ${totalActions} действий`;
   }
 
+  function getPlayerSeasonShortFromStats(playerStats) {
+    if (!playerStats || !playerStats.totalActions) return 'статистики пока нет';
+    return `${playerStats.matches || 0} матчей · ${playerStats.totalActions} действий · ошибок ${playerStats.errors || 0}`;
+  }
+
   function renderTeamSeasonStats() {
     const target = $('#team-season-stats-content');
     if (!target) return;
@@ -615,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <button class="season-player-row" type="button" data-player-season-id="${escapeHtml(player.playerId)}">
         <span class="avatar small">${escapeHtml(player.number || '')}</span>
         <span>
-          <strong>${escapeHtml(player.name)}</strong>
+          <strong>${escapeHtml(getPlayerDisplayName(player))}</strong>
           <small>${escapeHtml(player.role || 'не указано')} · ${player.totalActions} действий · ошибок ${player.errors}</small>
         </span>
       </button>
@@ -649,10 +739,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const season = getPlayerSeasonAnalytics(player.id);
 
     card.innerHTML = `
-      <div class="player-photo">${renderAvatar(player, 'large')}</div>
-      <div class="player-card-title">
-        <h2>${escapeHtml(getFullName(player))}</h2>
-        <p>№${player.number} · ${escapeHtml(player.role)}</p>
+      <div class="player-card-hero role-${escapeHtml(player.roleKey || 'unknown')}">
+        <div class="player-photo">${renderAvatar(player, 'large')}</div>
+        <div class="player-card-title">
+          <span>${escapeHtml(TEAM_DATA.name)}</span>
+          <h2>${escapeHtml(getPlayerDisplayName(player))}</h2>
+          <p>№${player.number} · ${escapeHtml(player.role)}</p>
+        </div>
       </div>
       <dl class="player-facts">
         <div><dt>Команда</dt><dd>${escapeHtml(TEAM_DATA.name)}</dd></div>
@@ -664,6 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h2>Статистика за сезон</h2>
         ${renderPlayerSeasonFilters(season.matches)}
         ${renderPlayerSeasonStats(season)}
+        ${renderPlayerMatchesList(season.playedMatches, player.id)}
       </section>
     `;
   }
@@ -747,6 +841,27 @@ document.addEventListener('DOMContentLoaded', () => {
           <thead><tr><th>Матч</th><th>Действий</th><th>Ошибки</th></tr></thead>
           <tbody>${season.dynamics.map((item) => `<tr><td>${escapeHtml(formatDate(item.date))}<br><small>${escapeHtml(item.opponent)}</small></td><td>${item.totalActions}</td><td>${item.errors}</td></tr>`).join('')}</tbody>
         </table>
+      </div>
+    `;
+  }
+
+  function renderPlayerMatchesList(matches, playerId) {
+    if (!matches.length) return '';
+
+    return `
+      <div class="player-match-list">
+        <h3>Матчи игрока</h3>
+        ${matches.map((match) => {
+          const events = (match.events || []).filter((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id));
+          const errors = events.filter((event) => event.actionType === 'error').length;
+          return `
+            <div class="player-match-row">
+              <span>${escapeHtml(formatDate(match.date))}</span>
+              <strong>${escapeHtml(match.opponent)}</strong>
+              <small>${events.length} действий · ошибок ${errors}</small>
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   }
@@ -897,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h1>Новый матч</h1>
       </header>
       <section class="match-setup-hero">
-        <div class="team-logo setup-logo">${escapeHtml(TEAM_DATA.logoText || TEAM_DATA.name.slice(0, 1))}</div>
+        <div class="team-logo setup-logo">${teamLogoMarkup(TEAM_DATA, 'compact')}</div>
         <div>
           <span>Активный профиль</span>
           <h2>${escapeHtml(TEAM_DATA.name)}</h2>
@@ -950,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <label class="roster-picker-row">
                 ${renderAvatar(player, 'small')}
                 <span class="roster-picker-main">
-                  <strong>№${escapeHtml(player.number)} ${escapeHtml(getFullName(player))}</strong>
+                  <strong>№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))}</strong>
                   <small>${escapeHtml(player.role)}${player.height ? ` · ${escapeHtml(player.height)} см` : ''}</small>
                 </span>
                 <span class="roster-picker-controls">
@@ -1270,7 +1385,7 @@ document.addEventListener('DOMContentLoaded', () => {
       matchId: state.currentMatch.id,
       playerId: player.id,
       playerNumber: player.number,
-      playerName: getFullName(player),
+      playerName: getPlayerDisplayName(player),
       playerRole: player.role,
       actionType: group.type,
       actionName: group.name,
@@ -1314,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const benchPlayers = getBenchPlayers();
 
     $('#substitution-current').textContent = currentPlayer
-      ? `Сейчас в строке: ${getFullName(currentPlayer)}`
+      ? `Сейчас в строке: ${getPlayerDisplayName(currentPlayer)}`
       : 'Строка свободна';
 
     const benchList = $('#bench-list');
@@ -1333,7 +1448,7 @@ document.addEventListener('DOMContentLoaded', () => {
         button.innerHTML = `
           ${renderAvatar(player, 'small')}
           <span>
-            <strong>${escapeHtml(getFullName(player))}</strong>
+            <strong>${escapeHtml(getPlayerDisplayName(player))}</strong>
             <small>№${player.number} · ${escapeHtml(player.role)} · ${player.height} см</small>
           </span>
         `;
@@ -2040,7 +2155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `
       <div class="roster-group">
         <h3>${escapeHtml(title)}</h3>
-        ${players.length ? `<div class="mini-list">${players.map((player) => `<span>№${escapeHtml(player.number)} ${escapeHtml(player.name)} · ${escapeHtml(player.role)}</span>`).join('')}</div>` : '<p class="muted">Нет данных</p>'}
+        ${players.length ? `<div class="mini-list">${players.map((player) => `<span>№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))} · ${escapeHtml(player.role)}</span>`).join('')}</div>` : '<p class="muted">Нет данных</p>'}
       </div>
     `;
   }
@@ -2055,7 +2170,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <tbody>
               ${players.map((player) => `
                 <tr>
-                  <td><button class="table-link" type="button" data-results-action="open-player-result" data-match-id="${escapeHtml(matchId)}" data-player-id="${escapeHtml(player.playerId)}">№${escapeHtml(player.number)} ${escapeHtml(player.name)}<br><small>${escapeHtml(player.role)}</small></button></td>
+                  <td><button class="table-link" type="button" data-results-action="open-player-result" data-match-id="${escapeHtml(matchId)}" data-player-id="${escapeHtml(player.playerId)}">№${escapeHtml(player.number)} ${escapeHtml(getPlayerDisplayName(player))}<br><small>${escapeHtml(player.role)}</small></button></td>
                   <td>${escapeHtml(player.status)}</td>
                   <td>${player.totalActions}</td>
                   <td>${window.SetkaStatsCore.summarizeActionLine(player.byAction.serve)}</td>
@@ -2108,7 +2223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="set-card">
               <strong>${escapeHtml(formatSetLabel(set.setNumber))} · ${escapeHtml(set.score)}</strong>
               <span>${set.totalActions} действий</span>
-              <small>Лучшие: ${set.bestPlayers.map((player) => player.name).join(', ') || 'Недостаточно данных'}</small>
+              <small>Лучшие: ${set.bestPlayers.map((player) => getPlayerDisplayName(player)).join(', ') || 'Недостаточно данных'}</small>
               <small>Проблемные действия: ${set.problemActions.map((action) => `${action.name} -${window.SetkaStatsCore.formatPercent(action.minusPercent)}`).join(', ') || 'нет'}</small>
             </div>
           `).join('')}
@@ -2130,7 +2245,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="journal-tools">
           <select data-event-filter="playerId">
             ${option('', 'Все игроки', filters.playerId)}
-            ${players.map((player) => option(player.playerId, player.name, filters.playerId)).join('')}
+            ${players.map((player) => option(player.playerId, getPlayerDisplayName(player), filters.playerId)).join('')}
           </select>
           <select data-event-filter="role">
             ${option('', 'Все амплуа', filters.role)}
@@ -2184,7 +2299,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <tr>
         <td>${escapeHtml(time)}</td>
         <td>${escapeHtml(event.setNumber || 'не указана')}</td>
-        <td>${escapeHtml(event.playerName)}</td>
+        <td>${escapeHtml(getPlayerDisplayName(event.playerName))}</td>
         <td>${escapeHtml(event.playerRole)}</td>
         <td>${escapeHtml(event.actionName || event.actionType)}</td>
         <td>${escapeHtml(event.resultLabel || event.actionResult)}</td>
@@ -2213,7 +2328,7 @@ document.addEventListener('DOMContentLoaded', () => {
     content.innerHTML = `
       <section class="match-detail-hero">
         <button class="text-button" type="button" data-results-action="back-match">К матчу</button>
-        <div><h2>${escapeHtml(player.name)}</h2><p>№${escapeHtml(player.number)} · ${escapeHtml(player.role)}</p></div>
+        <div><h2>${escapeHtml(getPlayerDisplayName(player))}</h2><p>№${escapeHtml(player.number)} · ${escapeHtml(player.role)}</p></div>
         <button class="primary-action" type="button" data-results-action="export-player" data-player-id="${escapeHtml(player.playerId)}">PDF игрока</button>
       </section>
       <section class="results-section">

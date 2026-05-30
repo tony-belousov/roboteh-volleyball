@@ -83,6 +83,12 @@
     }, {});
   }
 
+  function getPlayerDisplayName(value) {
+    if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(value);
+    const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || String(value || '').trim();
+  }
+
   function calculateTeamStats(events, teamId = '') {
     const safeEvents = (Array.isArray(events) ? events : [])
       .filter((event) => !teamId || !event.teamId || event.teamId === teamId);
@@ -99,7 +105,7 @@
       errors: {
         total: errorEvents.length,
         bySet: groupCount(errorEvents, (event) => event.setNumber || 'Партия не указана'),
-        byPlayer: groupCount(errorEvents, (event) => event.playerName || event.playerId || 'Игрок'),
+        byPlayer: groupCount(errorEvents, (event) => getPlayerDisplayName(event.playerName || event.playerId || 'Игрок')),
         byRole: groupCount(errorEvents, (event) => event.playerRole || 'Амплуа')
       }
     };

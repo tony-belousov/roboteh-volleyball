@@ -1,6 +1,7 @@
 (function () {
   const ACTIVE_TEAM_KEY = 'setka.activeTeamId';
   const DEFAULT_TEAM_ID = 'robotech';
+  const ROBOTECH_LOGO = 'assets/brand/robotech-logo.png';
 
   function splitName(fullName) {
     const parts = String(fullName || '').trim().split(/\s+/);
@@ -9,6 +10,21 @@
       firstName: parts[1] || '',
       patronymic: parts.slice(2).join(' ')
     };
+  }
+
+  function getFullName(player) {
+    if (typeof player === 'string') return player.trim();
+    return String(player?.fullName || player?.name || `${player?.lastName || ''} ${player?.firstName || ''} ${player?.patronymic || ''}`.trim() || '').trim();
+  }
+
+  function getPlayerDisplayName(player) {
+    if (!player) return '';
+    const lastName = typeof player === 'string' ? '' : (player.lastName || '');
+    const firstName = typeof player === 'string' ? '' : (player.firstName || '');
+    if (lastName && firstName) return `${lastName} ${firstName}`.trim();
+
+    const parts = getFullName(player).split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || getFullName(player);
   }
 
   function makePlayer(player, overrides = {}) {
@@ -21,6 +37,7 @@
       firstName: name.firstName,
       patronymic: name.patronymic,
       fullName: player.fullName,
+      displayName: getPlayerDisplayName(player.fullName),
       birthDate: player.birthDate || '',
       registrationAddress: player.registrationAddress || '',
       photo: player.photo || '',
@@ -70,14 +87,14 @@
   }
 
   const robotechPlayers = [
-    makePlayer({ id: 'robotech-1', teamId: 'robotech', number: 1, fullName: 'Баймухин Роман Сергеевич', birthDate: '1985-03-29', role: 'Связующий', roleKey: 'setter', status: 'основной состав' }),
+    makePlayer({ id: 'robotech-1', teamId: 'robotech', number: 1, fullName: 'Байнякшин Роман Сергеевич', birthDate: '1985-03-29', role: 'Связующий', roleKey: 'setter', status: 'основной состав' }),
     makePlayer({ id: 'robotech-2', teamId: 'robotech', number: 2, fullName: 'Биркин Александр Сергеевич', birthDate: '1993-06-18', role: 'Доигровщик', roleKey: 'outside', status: 'основной состав' }),
     makePlayer({ id: 'robotech-3', teamId: 'robotech', number: 3, fullName: 'Жученко Иван Петрович', birthDate: '1983-10-28', role: 'Блокирующий', roleKey: 'middle', status: 'основной состав' }),
     makePlayer({ id: 'robotech-4', teamId: 'robotech', number: 4, fullName: 'Кудряшов Егор Николаевич', birthDate: '1995-01-10', role: 'Диагональный', roleKey: 'opposite', status: 'основной состав' }),
     makePlayer({ id: 'robotech-5', teamId: 'robotech', number: 5, fullName: 'Лебедев Владимир Олегович', birthDate: '1989-12-05', role: 'Либеро', roleKey: 'libero', status: 'основной состав' }),
     makePlayer({ id: 'robotech-6', teamId: 'robotech', number: 6, fullName: 'Несоленов Андрей Юрьевич', birthDate: '1995-09-18', role: 'Доигровщик', roleKey: 'outside', status: 'основной состав' }),
     makePlayer({ id: 'robotech-7', teamId: 'robotech', number: 7, fullName: 'Охрименко Сергей Александрович', birthDate: '1991-03-31', role: 'Блокирующий', roleKey: 'middle', status: 'основной состав' }),
-    makePlayer({ id: 'robotech-8', teamId: 'robotech', number: 8, fullName: 'Сивинцев Артем Александрович', birthDate: '1989-10-23', role: 'Доигровщик', roleKey: 'outside', status: 'запас' }),
+    makePlayer({ id: 'robotech-8', teamId: 'robotech', number: 8, fullName: 'Сивенцев Артем Александрович', birthDate: '1989-10-23', role: 'Доигровщик', roleKey: 'outside', status: 'запас' }),
     makePlayer({ id: 'robotech-9', teamId: 'robotech', number: 9, fullName: 'Сурков Олег Сергеевич', birthDate: '1998-07-19', role: 'Доигровщик', roleKey: 'outside', status: 'запас' }),
     makePlayer({
       id: 'robotech-10',
@@ -110,7 +127,7 @@
     }),
     makePlayer({ id: 'robotech2-7', teamId: 'robotech_2', number: 7, fullName: 'Тюрин Дмитрий Александрович', birthDate: '1987-08-27', role: 'Связующий', roleKey: 'setter', status: 'запас' }),
     makePlayer({ id: 'robotech2-8', teamId: 'robotech_2', number: 8, fullName: 'Чарыев Мерген', birthDate: null, role: 'Либеро', roleKey: 'libero', status: 'основной состав', todo: 'Уточнить отчество и дату рождения.' }),
-    makePlayer({ id: 'robotech2-9', teamId: 'robotech_2', number: 9, fullName: 'Чернишев Александр Андреевич', birthDate: '2006-08-25', role: 'Доигровщик', roleKey: 'outside', status: 'запас' }),
+    makePlayer({ id: 'robotech2-9', teamId: 'robotech_2', number: 9, fullName: 'Чернышев Александр Андреевич', birthDate: '2006-08-25', role: 'Доигровщик', roleKey: 'outside', status: 'запас' }),
     makePlayer({
       id: 'robotech2-10',
       teamId: 'robotech_2',
@@ -129,9 +146,9 @@
       id: 'robotech',
       name: 'Роботех',
       subtitle: 'Волейбольная команда · сезон 2026',
-      description: 'Состав команды из заявочного листа. Амплуа и рост можно уточнить позже.',
+      description: 'Основной состав Роботеха для матчей, статистики и сезонной аналитики.',
       logoText: 'Р',
-      logo: '',
+      logo: ROBOTECH_LOGO,
       contacts: [
         { label: 'Телефон', value: 'Будет заполнено' },
         { label: 'Почта', value: 'Будет заполнено' }
@@ -152,9 +169,9 @@
       id: 'robotech_2',
       name: 'Роботех 2.0',
       subtitle: 'Волейбольная команда · сезон 2026',
-      description: 'Состав команды из заявочного листа. Амплуа и рост можно уточнить позже.',
+      description: 'Второй профиль Роботеха с отдельным составом, матчами и статистикой.',
       logoText: '2',
-      logo: '',
+      logo: ROBOTECH_LOGO,
       contacts: [
         { label: 'Телефон', value: 'Будет заполнено' },
         { label: 'Почта', value: 'Будет заполнено' }
@@ -199,6 +216,11 @@
     return getTeam(getActiveTeamId());
   }
 
+  window.SetkaPlayerNames = {
+    getFullName,
+    getPlayerDisplayName
+  };
+
   window.SetkaTeams = {
     key: ACTIVE_TEAM_KEY,
     defaultTeamId: DEFAULT_TEAM_ID,
@@ -206,6 +228,8 @@
     getTeam,
     getActiveTeam,
     getActiveTeamId,
-    setActiveTeamId
+    setActiveTeamId,
+    getFullName,
+    getPlayerDisplayName
   };
 })();

@@ -1,4 +1,13 @@
 (function () {
+  function getPlayerDisplayName(player) {
+    if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(player);
+    const value = typeof player === 'string'
+      ? player
+      : (player?.name || player?.fullName || `${player?.lastName || ''} ${player?.firstName || ''}`.trim());
+    const parts = String(value || '').trim().split(/\s+/).filter(Boolean);
+    return parts.slice(0, 2).join(' ') || String(value || '').trim();
+  }
+
   function calculatePlayerStats(matchOrMatches, teamId = '') {
     const matches = (Array.isArray(matchOrMatches) ? matchOrMatches : [matchOrMatches].filter(Boolean))
       .filter((match) => !teamId || !match.teamId || match.teamId === teamId);
@@ -12,7 +21,7 @@
             playerId: player.playerId || player.id,
             teamId: player.teamId || match.teamId || '',
             number: player.number || '',
-            name: player.name || '',
+            name: getPlayerDisplayName(player),
             fullName: player.fullName || player.name || '',
             role: player.role || '',
             roleKey: player.roleKey || '',
@@ -39,7 +48,7 @@
             playerId: id,
             teamId: event.teamId || match.teamId || '',
             number: event.playerNumber || '',
-            name: event.playerName || '',
+            name: getPlayerDisplayName(event.playerName || ''),
             fullName: event.playerName || '',
             role: event.playerRole || '',
             roleKey: '',
