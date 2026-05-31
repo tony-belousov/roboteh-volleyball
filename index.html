@@ -164,6 +164,7 @@
             <div id="stats-set-menu" class="set-picker-menu hidden" role="menu"></div>
           </div>
           <div class="stats-top-actions">
+            <button class="stats-small-button undo" type="button" id="undo-last-event-button" title="Отменить последнее действие">Отменить</button>
             <button class="stats-small-button" type="button" id="finish-match-button" title="Завершить матч">Завершить</button>
             <button class="stats-small-button danger" type="button" id="delete-draft-button" title="Удалить черновик">Черновик</button>
           </div>
@@ -171,7 +172,16 @@
         </header>
 
         <div class="stats-grid-shell">
+          <div class="stats-control-strip">
+            <div id="stats-set-tabs" class="stats-set-tabs" aria-label="Быстрый выбор партии"></div>
+            <div id="stats-score-panel" class="stats-score-panel" aria-label="Счёт текущей партии"></div>
+          </div>
           <div id="stats-grid" class="stats-grid" role="table" aria-label="Панель записи статистики"></div>
+          <details id="stats-live-journal" class="stats-live-journal">
+            <summary>Журнал действий</summary>
+            <div class="stats-journal-filters" id="stats-journal-filters"></div>
+            <div class="stats-journal-list" id="stats-journal-list"></div>
+          </details>
         </div>
       </div>
 
@@ -203,7 +213,12 @@
         <h1>Результаты</h1>
       </header>
       <div id="results-content" class="results-content" aria-live="polite">
-        <div class="results-loading">Загрузка результатов</div>
+        <div class="results-loading" role="status">
+          <span class="loader-dot" aria-hidden="true"></span>
+          <strong>Загрузка результатов</strong>
+          <div class="loading-skeleton"></div>
+          <div class="loading-skeleton short"></div>
+        </div>
       </div>
     </section>
 
@@ -246,6 +261,7 @@
         if (!banner || !updateButton) return;
         waitingRegistration = registration;
         banner.classList.remove('hidden');
+        if (window.SetkaShowToast) window.SetkaShowToast('Доступна новая версия', 'info');
 
         updateButton.onclick = function () {
           updateButton.disabled = true;

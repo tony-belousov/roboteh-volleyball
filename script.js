@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.05.30.5';
+  const APP_VERSION = '2026.05.31.2';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ]
     }
   ];
+  const ACTION_GROUP_BY_TYPE = Object.fromEntries(ACTION_GROUPS.map((group) => [group.type, group]));
 
   const ROLE_ORDER = {
     opposite: 1,
@@ -117,6 +118,11 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTapAt: 0,
     autosaveTimer: null,
     wakeLock: null,
+    statsJournalFilters: {
+      setNumber: '',
+      playerId: '',
+      actionType: ''
+    },
     results: {
       view: 'home',
       selectedMatchId: '',
@@ -196,6 +202,110 @@ document.addEventListener('DOMContentLoaded', () => {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   }
+
+  function showToast(message, tone = 'success', duration = 2800) {
+    $$('.app-toast').forEach((item) => item.remove());
+    const toast = document.createElement('div');
+    toast.className = `app-toast ${['success', 'error', 'warning', 'info'].includes(tone) ? tone : 'info'}`;
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    window.setTimeout(() => toast.classList.add('visible'), 20);
+    window.setTimeout(() => {
+      toast.classList.remove('visible');
+      window.setTimeout(() => toast.remove(), 220);
+    }, duration);
+  }
+
+  function confirmModal({
+    title,
+    message,
+    confirmText = 'Подтвердить',
+    cancelText = 'Отмена',
+    danger = false
+  }) {
+    return new Promise((resolve) => {
+      const modal = document.createElement('div');
+      modal.className = 'modal confirm-modal';
+      modal.setAttribute('role', 'dialog');
+      modal.setAttribute('aria-modal', 'true');
+      modal.innerHTML = `
+        <div class="modal-panel confirm-panel">
+          <h2>${escapeHtml(title)}</h2>
+          <p>${escapeHtml(message)}</p>
+          <div class="modal-actions">
+            <button class="secondary-button" type="button" data-confirm-cancel>${escapeHtml(cancelText)}</button>
+            <button class="${danger ? 'danger-action' : 'primary-action'}" type="button" data-confirm-ok>${escapeHtml(confirmText)}</button>
+          </div>
+        </div>
+      `;
+
+      const close = (value) => {
+        document.removeEventListener('keydown', onKeydown);
+        modal.remove();
+        resolve(value);
+      };
+      const onKeydown = (event) => {
+        if (event.key === 'Escape') close(false);
+      };
+
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal || event.target.closest('[data-confirm-cancel]')) close(false);
+        if (event.target.closest('[data-confirm-ok]')) close(true);
+      });
+      document.addEventListener('keydown', onKeydown);
+      document.body.appendChild(modal);
+      modal.querySelector('[data-confirm-cancel]')?.focus();
+    });
+  }
+
+  function renderEmptyState({ title, text, action = '', actionText = '', compact = false }) {
+    return `
+      <div class="results-state empty-state ${compact ? 'compact' : ''}">
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(text)}</p>
+        ${action && actionText ? `<button class="primary-action state-action" type="button" data-results-action="${escapeHtml(action)}">${escapeHtml(actionText)}</button>` : ''}
+      </div>
+    `;
+  }
+
+  function renderErrorState({ title, text, action = '', actionText = 'Повторить' }) {
+    return `
+      <div class="results-state error">
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(text)}</p>
+        ${action ? `<button class="secondary-button state-action" type="button" data-results-action="${escapeHtml(action)}">${escapeHtml(actionText)}</button>` : ''}
+      </div>
+    `;
+  }
+
+  function renderLoadingState(text = 'Загрузка данных') {
+    return `
+      <div class="results-loading" role="status">
+        <span class="loader-dot" aria-hidden="true"></span>
+        <strong>${escapeHtml(text)}</strong>
+        <div class="loading-skeleton"></div>
+        <div class="loading-skeleton short"></div>
+      </div>
+    `;
+  }
+
+  function notifyPdfResult(ok) {
+    showToast(ok ? 'PDF сформирован' : 'Не удалось сформировать PDF', ok ? 'success' : 'error');
+  }
+
+  function executePdfExport(exporter) {
+    showToast('Формирование PDF', 'info');
+    try {
+      notifyPdfResult(exporter());
+    } catch (error) {
+      console.error('PDF export error', error);
+      showToast('PDF недоступен', 'error');
+    }
+  }
+
+  window.SetkaShowToast = showToast;
+  window.SetkaConfirmModal = confirmModal;
 
   function getFullName(player) {
     if (player.fullName) return player.fullName;
@@ -497,8 +607,13 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#match-setup')?.addEventListener('change', handleMatchSetupChange);
     $('#finish-match-button')?.addEventListener('click', openFinishMatchModal);
     $('#delete-draft-button')?.addEventListener('click', deleteActiveMatchDraft);
+    $('#undo-last-event-button')?.addEventListener('click', undoLastStatEvent);
     $('#stats-set-button')?.addEventListener('click', toggleSetMenu);
     $('#stats-set-menu')?.addEventListener('click', handleSetMenuClick);
+    $('#stats-set-tabs')?.addEventListener('click', handleStatsSetTabsClick);
+    $('#stats-score-panel')?.addEventListener('click', handleStatsScoreClick);
+    $('#stats-live-journal')?.addEventListener('change', handleStatsJournalChange);
+    $('#stats-live-journal')?.addEventListener('click', handleStatsJournalClick);
     $('#finish-match-save')?.addEventListener('click', saveFinishedMatch);
     $('#finish-match-cancel')?.addEventListener('click', closeFinishMatchModal);
     $('#finish-match-modal')?.addEventListener('click', handleFinishModalClick);
@@ -611,7 +726,11 @@ document.addEventListener('DOMContentLoaded', () => {
     coachesList.innerHTML = '';
     const coaches = Array.isArray(TEAM_DATA.coaches) ? TEAM_DATA.coaches : [];
     if (!coaches.length) {
-      coachesList.innerHTML = '<div class="results-state compact">Тренерский состав будет заполнен позже.</div>';
+      coachesList.innerHTML = renderEmptyState({
+        title: 'Тренеры не указаны',
+        text: 'Тренерский состав можно будет заполнить позже.',
+        compact: true
+      });
     }
     coaches.forEach((coach) => {
       const item = document.createElement('div');
@@ -630,7 +749,11 @@ document.addEventListener('DOMContentLoaded', () => {
       : [];
     const playerStatsById = new Map(playerStats.map((item) => [item.playerId, item]));
     if (!TEAM_DATA.players.length) {
-      playersList.innerHTML = '<div class="results-state compact">В составе пока нет игроков.</div>';
+      playersList.innerHTML = renderEmptyState({
+        title: 'Состав не заполнен',
+        text: 'Добавьте игроков в команду.',
+        compact: true
+      });
     }
     TEAM_DATA.players.forEach((player) => {
       const seasonLine = getPlayerSeasonShortFromStats(playerStatsById.get(player.id));
@@ -708,7 +831,11 @@ document.addEventListener('DOMContentLoaded', () => {
       : [];
 
     if (!matches.length || playerStats.every((player) => player.totalActions === 0)) {
-      target.innerHTML = '<div class="results-state compact">По игрокам пока нет сохранённой статистики.</div>';
+      target.innerHTML = renderEmptyState({
+        title: 'Статистики пока нет',
+        text: 'Игроки появятся в статистике после сохранённого матча.',
+        compact: true
+      });
       return;
     }
 
@@ -786,7 +913,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerEvents = matches.flatMap((match) => (match.events || [])
       .filter((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id))
       .map((event) => ({ ...event, match })));
-    const playedMatches = matches.filter((match) => (match.events || []).some((event) => event.playerId === playerId));
+    const playedMatches = matches.filter((match) => (match.events || [])
+      .some((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id)));
     const setNumbers = new Set(playerEvents.map((event) => event.setNumber).filter(Boolean));
 
     return {
@@ -799,8 +927,8 @@ document.addEventListener('DOMContentLoaded', () => {
         matchId: match.id,
         date: match.date,
         opponent: match.opponent,
-        totalActions: (match.events || []).filter((event) => event.playerId === playerId).length,
-        errors: (match.events || []).filter((event) => event.playerId === playerId && event.actionType === 'error').length
+        totalActions: (match.events || []).filter((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id)).length,
+        errors: (match.events || []).filter((event) => event.playerId === playerId && event.actionType === 'error' && (!event.teamId || event.teamId === TEAM_DATA.id)).length
       }))
     };
   }
@@ -813,7 +941,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="player-season-filters">
         <select data-player-filter="matchId">
           ${option('', 'Все матчи', filters.matchId)}
-          ${matches.map((match) => option(match.id, `${formatDate(match.date)} · ${match.opponent}`, filters.matchId)).join('')}
+          ${matches.map((match) => option(match.id, `${formatDate(match.date)} · ${match.opponent || 'Соперник не указан'}`, filters.matchId)).join('')}
         </select>
         <select data-player-filter="tournament">
           ${option('', 'Все турниры', filters.tournament)}
@@ -831,7 +959,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderPlayerSeasonStats(season) {
     if (!season.events.length) {
-      return '<div class="results-state compact">По этому игроку пока нет сохранённой статистики.</div>';
+      return renderEmptyState({
+        title: 'Статистики пока нет',
+        text: 'Игрок появится в статистике после сохранённого матча.',
+        compact: true
+      });
     }
 
     return `
@@ -851,7 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="table-scroll">
         <table class="stats-table">
           <thead><tr><th>Матч</th><th>Действий</th><th>Ошибки</th></tr></thead>
-          <tbody>${season.dynamics.map((item) => `<tr><td>${escapeHtml(formatDate(item.date))}<br><small>${escapeHtml(item.opponent)}</small></td><td>${item.totalActions}</td><td>${item.errors}</td></tr>`).join('')}</tbody>
+          <tbody>${season.dynamics.map((item) => `<tr><td data-label="Матч">${escapeHtml(formatDate(item.date))}<br><small>${escapeHtml(item.opponent || 'Соперник не указан')}</small></td><td data-label="Действий">${item.totalActions}</td><td data-label="Ошибки">${item.errors}</td></tr>`).join('')}</tbody>
         </table>
       </div>
     `;
@@ -940,6 +1072,76 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.min(5, Math.max(1, Math.round(parsed)));
   }
 
+  function normalizeScoreValue(value) {
+    if (value === '' || value === null || typeof value === 'undefined') return 0;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return Math.round(parsed);
+  }
+
+  function createEmptySets() {
+    return Array.from({ length: 5 }, (_, index) => {
+      const setNumber = index + 1;
+      return {
+        setNumber,
+        ourScore: 0,
+        opponentScore: 0,
+        ours: 0,
+        opponent: 0,
+        score: '0:0'
+      };
+    });
+  }
+
+  function normalizeMatchSets(match) {
+    const bySet = new Map();
+    const source = Array.isArray(match?.sets) && match.sets.length
+      ? match.sets
+      : Array.isArray(match?.setScores)
+        ? match.setScores
+        : [];
+
+    source.forEach((item, index) => {
+      const fallbackNumber = index + 1;
+      if (typeof item === 'string') {
+        const parts = item.split(/[:\-]/);
+        const setNumber = normalizeSetNumber(fallbackNumber);
+        const ourScore = normalizeScoreValue(parts[0]);
+        const opponentScore = normalizeScoreValue(parts[1]);
+        bySet.set(setNumber, { setNumber, ourScore, opponentScore, ours: ourScore, opponent: opponentScore, score: `${ourScore}:${opponentScore}` });
+        return;
+      }
+
+      if (item && typeof item === 'object') {
+        const parts = typeof item.score === 'string' ? item.score.split(/[:\-]/) : [];
+        const setNumber = normalizeSetNumber(item.setNumber || item.number || fallbackNumber);
+        const ourScore = normalizeScoreValue(item.ourScore ?? item.ours ?? parts[0]);
+        const opponentScore = normalizeScoreValue(item.opponentScore ?? item.opponent ?? parts[1]);
+        bySet.set(setNumber, { ...item, setNumber, ourScore, opponentScore, ours: ourScore, opponent: opponentScore, score: `${ourScore}:${opponentScore}` });
+      }
+    });
+
+    return createEmptySets().map((item) => bySet.get(item.setNumber) || item);
+  }
+
+  function ensureMatchSets(match = state.currentMatch) {
+    if (!match) return createEmptySets();
+    const sets = normalizeMatchSets(match);
+    match.sets = sets;
+    return sets;
+  }
+
+  function getSetScore(match = state.currentMatch, setNumber = state.currentSet) {
+    const sets = ensureMatchSets(match);
+    return sets.find((set) => Number(set.setNumber) === Number(setNumber)) || sets[0];
+  }
+
+  function getVisibleSetScores(match = state.currentMatch) {
+    return ensureMatchSets(match)
+      .filter((set) => Number(set.ourScore || set.ours || 0) > 0 || Number(set.opponentScore || set.opponent || 0) > 0)
+      .map((set) => `${set.ourScore}:${set.opponentScore}`);
+  }
+
   function isActiveStatsMatch(match) {
     return Boolean(match && (!match.teamId || match.teamId === TEAM_DATA.id) && match.status !== 'завершён');
   }
@@ -962,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? normalizeLineupSlots(activeMatch.startingLineup).filter((slot) => slot.playerId)
         : normalizedCurrentLineup.filter((slot) => slot.playerId);
       state.statsLineup = normalizedCurrentLineup;
-      state.currentSet = normalizeSetNumber(activeMatch.setNumber || activeMatch.currentSet || 1);
+      state.currentSet = normalizeSetNumber(activeMatch.currentSet || activeMatch.setNumber || 1);
       state.currentMatch = {
         ...activeMatch,
         teamId: activeMatch.teamId || TEAM_DATA.id,
@@ -970,7 +1172,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ourTeam: activeMatch.ourTeam || TEAM_DATA.name,
         location: activeMatch.location || activeMatch.venue || '',
         venue: activeMatch.venue || activeMatch.location || '',
+        currentSet: state.currentSet,
         setNumber: state.currentSet,
+        sets: normalizeMatchSets(activeMatch),
+        setScores: getVisibleSetScores(activeMatch),
         lineup: normalizedCurrentLineup,
         startingLineup: normalizedStartingLineup
       };
@@ -1009,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
     hydrateLineup();
     if (isActiveStatsMatch(state.currentMatch)) return true;
     enterStatsScreen();
-    alert('Сначала создайте матч для записи статистики.');
+    showToast('Сначала создайте матч для записи статистики', 'info');
     return false;
   }
 
@@ -1071,7 +1276,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span>До 7 игроков в старте</span>
         </div>
         <div class="roster-picker">
-          ${TEAM_DATA.players.map((player) => {
+          ${TEAM_DATA.players.length ? TEAM_DATA.players.map((player) => {
             const isStarter = starterIds.has(player.id);
             return `
               <label class="roster-picker-row">
@@ -1086,7 +1291,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 </span>
               </label>
             `;
-          }).join('')}
+          }).join('') : renderEmptyState({
+            title: 'Состав не заполнен',
+            text: 'Добавьте игроков в команду.',
+            compact: true
+          })}
         </div>
         <p class="setup-note">Игроки вне заявки не попадут в запись статистики и результаты этого матча.</p>
       </section>
@@ -1125,12 +1334,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const starterCount = $$('[data-setup-starter]:checked').length;
       if (starterCount > 7) {
         starter.checked = false;
-        alert('В стартовом составе может быть не больше 7 строк с учётом либеро.');
+        showToast('В стартовом составе может быть не больше 7 игроков', 'warning');
       }
     }
   }
 
-  function createMatchFromSetup() {
+  async function createMatchFromSetup() {
     const setup = $('#match-setup');
     const opponent = $('#match-opponent', setup)?.value.trim() || '';
     const date = $('#match-date', setup)?.value || getTodayInputDate();
@@ -1143,20 +1352,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const starterIds = $$('[data-setup-starter]:checked', setup).map((input) => input.value).filter((id) => participantIds.includes(id));
 
     if (!opponent) {
-      alert('Укажите соперника.');
+      showToast('Укажите соперника', 'warning');
       $('#match-opponent', setup)?.focus();
       return;
     }
     if (!participantIds.length) {
-      alert('Выберите хотя бы одного игрока в заявку.');
+      showToast('Выберите хотя бы одного игрока в заявку', 'warning');
       return;
     }
     if (starterIds.length > 7) {
-      alert('В стартовом составе может быть не больше 7 игроков.');
+      showToast('В стартовом составе может быть не больше 7 игроков', 'warning');
       return;
     }
-    if (starterIds.length < 6 && !confirm('В стартовом составе меньше 6 игроков. Начать запись всё равно?')) {
-      return;
+    if (starterIds.length < 6) {
+      const ok = await confirmModal({
+        title: 'Начать неполным составом?',
+        message: 'В стартовом составе меньше 6 игроков. Можно продолжить, если это осознанная запись.',
+        confirmText: 'Начать',
+        cancelText: 'Отмена'
+      });
+      if (!ok) return;
     }
 
     const participants = participantIds.map(getPlayer).filter(Boolean);
@@ -1191,11 +1406,12 @@ document.addEventListener('DOMContentLoaded', () => {
       lineup,
       bench,
       substitutions: [],
-      sets: [],
+      sets: createEmptySets(),
       setScores: [],
       finalScore: '',
       result: '',
       coachComment,
+      currentSet: state.currentSet,
       setNumber: state.currentSet,
       title: `${TEAM_DATA.name} — ${opponent}`,
       createdAt: now,
@@ -1209,28 +1425,40 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function saveCurrentMatch() {
-    if (!state.currentMatch) return;
-    state.currentMatch.teamId = state.currentMatch.teamId || TEAM_DATA.id;
-    state.currentMatch.teamName = TEAM_DATA.name;
-    state.currentMatch.ourTeam = TEAM_DATA.name;
-    state.currentMatch.updatedAt = new Date().toISOString();
-    state.currentMatch.location = state.currentMatch.location || state.currentMatch.venue || '';
-    state.currentMatch.venue = state.currentMatch.venue || state.currentMatch.location || '';
-    if (!Array.isArray(state.currentMatch.startingLineup) || !state.currentMatch.startingLineup.length) {
-      state.currentMatch.startingLineup = state.statsLineup.filter((slot) => slot.playerId);
-    }
-    state.currentMatch.lineup = state.statsLineup;
-    state.currentMatch.setNumber = state.currentSet;
-    state.currentMatch.roster = buildMatchRoster();
-    state.currentMatch.bench = getBenchRosterSnapshots();
-    state.currentMatch.substitutions = storage.load(STORAGE_KEYS.substitutions, [])
-      .filter((item) => item.matchId === state.currentMatch.id && (!item.teamId || item.teamId === TEAM_DATA.id));
-    state.currentMatch.events = window.SetkaStorageEvents
-      ? window.SetkaStorageEvents.getByMatch(state.currentMatch.id).filter((event) => !event.teamId || event.teamId === TEAM_DATA.id)
-      : storage.load(STORAGE_KEYS.statsEvents, []).filter((event) => event.matchId === state.currentMatch.id && (!event.teamId || event.teamId === TEAM_DATA.id));
-    storage.save(STORAGE_KEYS.currentMatch, state.currentMatch);
-    if (window.SetkaStorageMatches) {
-      window.SetkaStorageMatches.upsert(state.currentMatch);
+    if (!state.currentMatch) return false;
+
+    try {
+      state.currentMatch.teamId = state.currentMatch.teamId || TEAM_DATA.id;
+      state.currentMatch.teamName = TEAM_DATA.name;
+      state.currentMatch.ourTeam = TEAM_DATA.name;
+      state.currentMatch.updatedAt = new Date().toISOString();
+      state.currentMatch.location = state.currentMatch.location || state.currentMatch.venue || '';
+      state.currentMatch.venue = state.currentMatch.venue || state.currentMatch.location || '';
+      if (!Array.isArray(state.currentMatch.startingLineup) || !state.currentMatch.startingLineup.length) {
+        state.currentMatch.startingLineup = state.statsLineup.filter((slot) => slot.playerId);
+      }
+      state.currentMatch.lineup = state.statsLineup;
+      state.currentMatch.currentSet = state.currentSet;
+      state.currentMatch.setNumber = state.currentSet;
+      state.currentMatch.sets = ensureMatchSets();
+      state.currentMatch.setScores = getVisibleSetScores();
+      state.currentMatch.roster = buildMatchRoster();
+      state.currentMatch.bench = getBenchRosterSnapshots();
+      state.currentMatch.substitutions = storage.load(STORAGE_KEYS.substitutions, [])
+        .filter((item) => item.matchId === state.currentMatch.id && (!item.teamId || item.teamId === TEAM_DATA.id));
+      state.currentMatch.events = window.SetkaStorageEvents
+        ? window.SetkaStorageEvents.getByMatch(state.currentMatch.id).filter((event) => !event.teamId || event.teamId === TEAM_DATA.id)
+        : storage.load(STORAGE_KEYS.statsEvents, []).filter((event) => event.matchId === state.currentMatch.id && (!event.teamId || event.teamId === TEAM_DATA.id));
+      storage.save(STORAGE_KEYS.currentMatch, state.currentMatch);
+      if (window.SetkaStorageMatches) {
+        window.SetkaStorageMatches.upsert(state.currentMatch);
+      }
+      return true;
+    } catch (error) {
+      console.error('Autosave error', error);
+      updateAutosave('error');
+      showToast('Не удалось сохранить данные', 'error');
+      return false;
     }
   }
 
@@ -1276,6 +1504,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     state.currentSet = nextSet;
     if (state.currentMatch) {
+      ensureMatchSets();
+      state.currentMatch.currentSet = state.currentSet;
       state.currentMatch.setNumber = state.currentSet;
       saveCurrentMatch();
     }
@@ -1285,17 +1515,216 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAutosave();
   }
 
+  function renderStatsSetTabs() {
+    const container = $('#stats-set-tabs');
+    if (!container) return;
+    const sets = ensureMatchSets();
+    container.innerHTML = sets.map((set) => `
+      <button
+        type="button"
+        class="${Number(set.setNumber) === Number(state.currentSet) ? 'active' : ''}"
+        data-stats-set-tab="${escapeHtml(set.setNumber)}"
+        aria-pressed="${Number(set.setNumber) === Number(state.currentSet)}"
+      >
+        <strong>${escapeHtml(set.setNumber)}</strong>
+        <span>${escapeHtml(set.ourScore)}:${escapeHtml(set.opponentScore)}</span>
+      </button>
+    `).join('');
+  }
+
+  function renderStatsScorePanel() {
+    const panel = $('#stats-score-panel');
+    if (!panel) return;
+    const score = getSetScore();
+    panel.innerHTML = `
+      <div class="score-box">
+        <span>Партия ${escapeHtml(state.currentSet)}</span>
+        <strong>${escapeHtml(score.ourScore)}:${escapeHtml(score.opponentScore)}</strong>
+      </div>
+      <div class="score-controls" aria-label="Изменить счёт партии ${escapeHtml(state.currentSet)}">
+        <button type="button" data-score-action="our-minus" aria-label="Уменьшить наш счёт">−</button>
+        <button type="button" data-score-action="our-plus" aria-label="Добавить очко ${escapeHtml(TEAM_DATA.name)}">${escapeHtml(TEAM_DATA.logoText || 'М')}</button>
+        <button type="button" data-score-action="opponent-plus" aria-label="Добавить очко сопернику">С</button>
+        <button type="button" data-score-action="opponent-minus" aria-label="Уменьшить счёт соперника">−</button>
+      </div>
+    `;
+  }
+
+  function changeCurrentSetScore(action) {
+    if (!ensureStatsMatch()) return;
+    const score = getSetScore();
+    if (!score) return;
+    if (action === 'our-plus') score.ourScore += 1;
+    if (action === 'our-minus') score.ourScore = Math.max(0, score.ourScore - 1);
+    if (action === 'opponent-plus') score.opponentScore += 1;
+    if (action === 'opponent-minus') score.opponentScore = Math.max(0, score.opponentScore - 1);
+    score.ours = score.ourScore;
+    score.opponent = score.opponentScore;
+    score.score = `${score.ourScore}:${score.opponentScore}`;
+    saveCurrentMatch();
+    renderStatsSetTabs();
+    renderStatsScorePanel();
+    renderSetPicker();
+    const title = $('#stats-set-score');
+    if (title) title.textContent = `Партия ${state.currentSet} · ${score.score}`;
+    updateAutosave();
+  }
+
+  function getCurrentMatchEvents() {
+    if (!state.currentMatch) return [];
+    const events = window.SetkaStorageEvents
+      ? window.SetkaStorageEvents.getByMatch(state.currentMatch.id)
+      : storage.load(STORAGE_KEYS.statsEvents, []).filter((event) => event.matchId === state.currentMatch.id);
+    return events
+      .filter((event) => !event.teamId || event.teamId === TEAM_DATA.id)
+      .map((event) => ({ ...event, setNumber: normalizeSetNumber(event.setNumber || 1) }))
+      .sort((a, b) => String(b.timestamp || b.time || '').localeCompare(String(a.timestamp || a.time || '')));
+  }
+
+  function getActionGroup(type) {
+    return ACTION_GROUP_BY_TYPE[type] || ACTION_GROUPS[0];
+  }
+
+  function getResultOption(actionType, resultCode) {
+    const group = getActionGroup(actionType);
+    return group.results.find((result) => result.code === resultCode) || group.results[0];
+  }
+
+  function getStatsJournalPlayers(events) {
+    const ids = new Set();
+    const players = [];
+    const addPlayer = (player) => {
+      if (!player || ids.has(player.id)) return;
+      ids.add(player.id);
+      players.push(player);
+    };
+
+    state.statsLineup.forEach((slot) => addPlayer(getPlayer(slot.playerId)));
+    (state.currentMatch?.roster || []).forEach((item) => addPlayer(getPlayer(item.playerId || item.id)));
+    events.forEach((event) => addPlayer(getPlayer(event.playerId)));
+    TEAM_DATA.players.forEach(addPlayer);
+    return players;
+  }
+
+  function renderActionOptions(value) {
+    return ACTION_GROUPS.map((group) => option(group.type, group.name, value)).join('');
+  }
+
+  function renderResultOptions(actionType, value) {
+    const group = getActionGroup(actionType);
+    return group.results.map((result) => option(result.code, result.label, value)).join('');
+  }
+
+  function renderPlayerOptions(players, value) {
+    return players.map((player) => option(player.id, `№${player.number} ${getPlayerDisplayName(player)}`, value)).join('');
+  }
+
+  function filterStatsJournalEvents(events) {
+    const filters = state.statsJournalFilters;
+    return events.filter((event) => {
+      if (filters.setNumber && String(event.setNumber || 1) !== filters.setNumber) return false;
+      if (filters.playerId && event.playerId !== filters.playerId) return false;
+      if (filters.actionType && event.actionType !== filters.actionType) return false;
+      return true;
+    });
+  }
+
+  function renderStatsJournal() {
+    const filtersNode = $('#stats-journal-filters');
+    const listNode = $('#stats-journal-list');
+    if (!filtersNode || !listNode) return;
+    const events = getCurrentMatchEvents();
+    const players = getStatsJournalPlayers(events);
+    const filters = state.statsJournalFilters;
+
+    filtersNode.innerHTML = `
+      <select data-stats-journal-filter="setNumber" aria-label="Фильтр партии">
+        ${option('', 'Все партии', filters.setNumber)}
+        ${[1, 2, 3, 4, 5].map((setNumber) => option(String(setNumber), `Партия ${setNumber}`, filters.setNumber)).join('')}
+      </select>
+      <select data-stats-journal-filter="playerId" aria-label="Фильтр игрока">
+        ${option('', 'Все игроки', filters.playerId)}
+        ${renderPlayerOptions(players, filters.playerId)}
+      </select>
+      <select data-stats-journal-filter="actionType" aria-label="Фильтр действия">
+        ${option('', 'Все действия', filters.actionType)}
+        ${renderActionOptions(filters.actionType)}
+      </select>
+    `;
+
+    const filtered = filterStatsJournalEvents(events);
+    if (!events.length) {
+      listNode.innerHTML = renderEmptyState({
+        title: 'Журнал пуст',
+        text: 'Действия появятся здесь во время записи статистики.',
+        compact: true
+      });
+      return;
+    }
+    if (!filtered.length) {
+      listNode.innerHTML = renderEmptyState({
+        title: 'Нет действий',
+        text: 'Измените фильтры журнала.',
+        compact: true
+      });
+      return;
+    }
+
+    listNode.innerHTML = filtered.slice(0, 80).map((event) => renderStatsJournalEvent(event, players)).join('');
+  }
+
+  function renderStatsJournalEvent(event, players) {
+    const group = getActionGroup(event.actionType);
+    const result = getResultOption(group.type, event.actionResult);
+    const time = event.timestamp || event.time
+      ? new Date(event.timestamp || event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      : '—';
+
+    return `
+      <article class="stats-journal-event" data-stats-event-id="${escapeHtml(event.id)}">
+        <div class="stats-journal-event-head">
+          <strong>${escapeHtml(event.playerName || 'Игрок')}</strong>
+          <span>${escapeHtml(time)} · партия ${escapeHtml(event.setNumber || 1)}</span>
+        </div>
+        <div class="stats-event-edit">
+          <select data-event-field="setNumber" aria-label="Партия события">
+            ${[1, 2, 3, 4, 5].map((setNumber) => option(String(setNumber), `Партия ${setNumber}`, String(event.setNumber || 1))).join('')}
+          </select>
+          <select data-event-field="playerId" aria-label="Игрок события">
+            ${renderPlayerOptions(players, event.playerId)}
+          </select>
+          <select data-event-field="actionType" aria-label="Действие события">
+            ${renderActionOptions(group.type)}
+          </select>
+          <select data-event-field="actionResult" aria-label="Результат действия">
+            ${renderResultOptions(group.type, result.code)}
+          </select>
+        </div>
+        <div class="stats-journal-actions">
+          <button class="secondary-button" type="button" data-stats-journal-action="save-event">Сохранить</button>
+          <button class="text-button danger-outline" type="button" data-stats-journal-action="delete-event">Удалить</button>
+        </div>
+      </article>
+    `;
+  }
+
   function renderStatsPanel() {
     const match = state.currentMatch;
+    const score = match ? getSetScore(match) : null;
     $('#stats-match-name').textContent = match ? match.opponent : TEAM_DATA.name;
     $('#stats-set-score').textContent = match
-      ? `${match.finalScore && match.finalScore !== '—' ? `Счёт ${match.finalScore}` : TEAM_DATA.name} · ${match.status || 'идёт матч'}`
+      ? `Партия ${state.currentSet} · ${score ? score.score : '0:0'}`
       : `Партия ${state.currentSet}`;
     renderSetPicker();
+    renderStatsSetTabs();
+    renderStatsScorePanel();
+    renderStatsJournal();
     const finishButton = $('#finish-match-button');
     const deleteButton = $('#delete-draft-button');
+    const undoButton = $('#undo-last-event-button');
     if (finishButton) finishButton.disabled = !match;
     if (deleteButton) deleteButton.disabled = !match;
+    if (undoButton) undoButton.disabled = !match || !getCurrentMatchEvents().length;
 
     const grid = $('#stats-grid');
     grid.innerHTML = '';
@@ -1392,6 +1821,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.requestAnimationFrame(() => button.classList.add('pressed'));
     window.setTimeout(() => button.classList.remove('pressed'), 180);
 
+    const timestamp = new Date().toISOString();
     const event = {
       id: createId('event'),
       teamId: TEAM_DATA.id,
@@ -1405,9 +1835,11 @@ document.addEventListener('DOMContentLoaded', () => {
       actionName: group.name,
       actionResult: result.code,
       resultLabel: result.label,
-      time: new Date().toISOString(),
+      time: timestamp,
       setNumber: state.currentSet,
-      timestamp: new Date().toISOString()
+      timestamp,
+      createdAt: timestamp,
+      updatedAt: timestamp
     };
 
     if (state.currentMatch.status !== 'идёт матч') state.currentMatch.status = 'сохранён локально';
@@ -1416,19 +1848,157 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       storage.append(STORAGE_KEYS.statsEvents, event);
     }
-    saveCurrentMatch();
-    updateAutosave();
+    const saved = saveCurrentMatch();
+    renderStatsJournal();
+    const undoButton = $('#undo-last-event-button');
+    if (undoButton) undoButton.disabled = false;
+    updateAutosave(saved ? 'saved' : 'error');
 
     if (navigator.vibrate) navigator.vibrate(8);
   }
 
-  function updateAutosave() {
+  async function undoLastStatEvent() {
+    if (!ensureStatsMatch()) return;
+    const removed = window.SetkaStorageEvents?.deleteLast(state.currentMatch.id, TEAM_DATA.id);
+    if (!removed) {
+      showToast('Нет действий для отмены', 'warning');
+      return;
+    }
+    saveCurrentMatch();
+    state.results.cacheKey = '';
+    renderStatsPanel();
+    updateAutosave('saved');
+    showToast('Последнее действие отменено', 'info');
+  }
+
+  function handleStatsSetTabsClick(event) {
+    const button = event.target.closest('[data-stats-set-tab]');
+    if (!button) return;
+    setCurrentSet(button.dataset.statsSetTab);
+  }
+
+  function handleStatsScoreClick(event) {
+    const button = event.target.closest('[data-score-action]');
+    if (!button) return;
+    changeCurrentSetScore(button.dataset.scoreAction);
+  }
+
+  function handleStatsJournalChange(event) {
+    const filter = event.target.dataset.statsJournalFilter;
+    if (filter) {
+      state.statsJournalFilters[filter] = event.target.value;
+      renderStatsJournal();
+      return;
+    }
+
+    const field = event.target.dataset.eventField;
+    if (field !== 'actionType') return;
+    const card = event.target.closest('[data-stats-event-id]');
+    const resultSelect = $('[data-event-field="actionResult"]', card);
+    if (resultSelect) {
+      resultSelect.innerHTML = renderResultOptions(event.target.value, getResultOption(event.target.value, '').code);
+    }
+  }
+
+  async function handleStatsJournalClick(event) {
+    const button = event.target.closest('[data-stats-journal-action]');
+    if (!button) return;
+    const card = button.closest('[data-stats-event-id]');
+    const eventId = card?.dataset.statsEventId || '';
+    if (!eventId) return;
+
+    if (button.dataset.statsJournalAction === 'save-event') {
+      saveStatsJournalEvent(card, eventId);
+      return;
+    }
+
+    if (button.dataset.statsJournalAction === 'delete-event') {
+      await deleteStatsJournalEvent(eventId);
+    }
+  }
+
+  function saveStatsJournalEvent(card, eventId) {
+    const playerId = $('[data-event-field="playerId"]', card)?.value || '';
+    const player = getPlayer(playerId);
+    const actionType = $('[data-event-field="actionType"]', card)?.value || '';
+    const group = getActionGroup(actionType);
+    const resultCode = $('[data-event-field="actionResult"]', card)?.value || '';
+    const result = getResultOption(actionType, resultCode);
+    const setNumber = normalizeSetNumber($('[data-event-field="setNumber"]', card)?.value || 1);
+
+    if (!player || !group || !result) {
+      showToast('Не удалось обновить действие', 'error');
+      return;
+    }
+
+    const updated = window.SetkaStorageEvents?.updateEvent(eventId, {
+      teamId: TEAM_DATA.id,
+      playerId: player.id,
+      playerNumber: player.number,
+      playerName: getPlayerDisplayName(player),
+      playerRole: player.role,
+      playerPhoto: getPlayerPhoto(player),
+      setNumber,
+      actionType: group.type,
+      actionName: group.name,
+      actionResult: result.code,
+      resultLabel: result.label
+    }, TEAM_DATA.id);
+
+    if (!updated) {
+      showToast('Не удалось сохранить действие', 'error');
+      return;
+    }
+
+    saveCurrentMatch();
+    state.results.cacheKey = '';
+    renderStatsPanel();
+    updateAutosave('saved');
+    showToast('Действие обновлено', 'success');
+  }
+
+  async function deleteStatsJournalEvent(eventId) {
+    const ok = await confirmModal({
+      title: 'Удалить действие?',
+      message: 'Статистика матча будет пересчитана.',
+      confirmText: 'Удалить',
+      danger: true
+    });
+    if (!ok) return;
+
+    if (window.SetkaStorageEvents?.deleteEvent(eventId, TEAM_DATA.id)) {
+      saveCurrentMatch();
+      state.results.cacheKey = '';
+      renderStatsPanel();
+      updateAutosave('saved');
+      showToast('Действие удалено');
+      return;
+    }
+
+    showToast('Не удалось удалить действие', 'error');
+  }
+
+  function updateAutosave(status = 'saving') {
     const indicator = $('#autosave-indicator');
     if (!indicator) return;
 
-    indicator.textContent = 'Сохранение';
-    indicator.classList.add('saving');
     window.clearTimeout(state.autosaveTimer);
+    indicator.classList.remove('saving', 'error');
+
+    if (status === 'error') {
+      indicator.textContent = 'Ошибка сохранения';
+      indicator.classList.add('error');
+      return;
+    }
+
+    if (status === 'saved') {
+      const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      indicator.textContent = `Сохранено ${time}`;
+      return;
+    }
+
+    indicator.textContent = 'Сохраняем...';
+    indicator.classList.add('saving');
     state.autosaveTimer = window.setTimeout(() => {
       const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
       indicator.textContent = `Сохранено ${time}`;
@@ -1671,6 +2241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     $('#finish-match-save')?.classList.add('hidden');
     $('#finish-match-cancel')?.classList.add('hidden');
+    showToast('Матч сохранён');
   }
 
   function resetFinishModalButtons() {
@@ -1678,26 +2249,33 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#finish-match-cancel')?.classList.remove('hidden');
   }
 
-  function deleteActiveMatchDraft() {
+  async function deleteActiveMatchDraft() {
     if (!state.currentMatch) return;
     const matchId = state.currentMatch.id;
-    if (!confirm('Удалить текущий матч и все записанные действия?')) return;
+    const ok = await confirmModal({
+      title: 'Удалить черновик?',
+      message: 'Текущий матч и все записанные действия будут удалены. Это действие нельзя отменить.',
+      confirmText: 'Удалить',
+      danger: true
+    });
+    if (!ok) return;
 
     if (window.SetkaStorageEvents) {
-      window.SetkaStorageEvents.deleteByMatch(matchId);
+      window.SetkaStorageEvents.deleteByMatch(matchId, TEAM_DATA.id);
     } else {
       const events = storage.load(STORAGE_KEYS.statsEvents, []);
-      storage.save(STORAGE_KEYS.statsEvents, events.filter((event) => event.matchId !== matchId));
+      storage.save(STORAGE_KEYS.statsEvents, events.filter((event) => event.matchId !== matchId || (event.teamId && event.teamId !== TEAM_DATA.id)));
     }
 
     const substitutions = storage.load(STORAGE_KEYS.substitutions, []);
-    storage.save(STORAGE_KEYS.substitutions, substitutions.filter((item) => item.matchId !== matchId));
+    storage.save(STORAGE_KEYS.substitutions, substitutions.filter((item) => item.matchId !== matchId || (item.teamId && item.teamId !== TEAM_DATA.id)));
 
     if (window.SetkaStorageMatches) {
-      window.SetkaStorageMatches.deleteMatch(matchId);
+      window.SetkaStorageMatches.deleteMatch(matchId, TEAM_DATA.id);
+      window.SetkaStorageMatches.deleteSubstitutionsByMatch?.(matchId, TEAM_DATA.id);
     } else {
       const matches = storage.load(STORAGE_KEYS.matches, []);
-      storage.save(STORAGE_KEYS.matches, matches.filter((match) => (match.id || match.matchId) !== matchId));
+      storage.save(STORAGE_KEYS.matches, matches.filter((match) => (match.id || match.matchId) !== matchId || (match.teamId && match.teamId !== TEAM_DATA.id)));
       storage.remove(STORAGE_KEYS.currentMatch);
     }
 
@@ -1705,6 +2283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.results.cacheKey = '';
     state.statsLineup = normalizeLineupSlots(TEAM_DATA.starterSlots);
     enterStatsScreen();
+    showToast('Черновик удалён');
   }
 
   function openResultsHome() {
@@ -1811,12 +2390,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       renderResultsHome(content);
     } catch (error) {
-      content.innerHTML = `
-        <div class="results-state error">
-          <h2>Ошибка загрузки</h2>
-          <p>Раздел результатов не смог обработать локальные данные. Данные статистики не удалены.</p>
-        </div>
-      `;
+      content.innerHTML = renderErrorState({
+        title: 'Не удалось загрузить результаты',
+        text: 'Раздел результатов не смог обработать локальные данные. Данные статистики не удалены.',
+        action: 'retry-results'
+      });
+      showToast('Ошибка загрузки данных', 'error');
       console.error('Results render error', error);
     }
   }
@@ -1832,7 +2411,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const noRealData = data.loadInfo.usedMock;
     content.innerHTML = `
-      ${noRealData ? renderInfoBanner('Пока нет сохранённых матчей. Ниже показаны демонстрационные данные, чтобы можно было проверить аналитику.') : ''}
+      ${noRealData ? renderEmptyState({
+        title: 'Матчей пока нет',
+        text: 'Создайте первый матч и начните запись статистики.',
+        action: 'open-stats-setup',
+        actionText: 'Записать матч'
+      }) : ''}
+      ${noRealData ? renderInfoBanner('Ниже показаны демонстрационные данные, чтобы можно было проверить аналитику.') : ''}
       ${data.loadInfo.damaged ? renderInfoBanner(`Есть повреждённые локальные записи: ${data.loadInfo.damaged}. Они пропущены.`) : ''}
       ${renderResultsFilters(data)}
       ${matches.length ? `
@@ -1848,10 +2433,12 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="match-card-list">${matches.map(renderMatchCard).join('')}</div>
         </section>
       ` : `
-        <div class="results-state">
-          <h2>Нет матчей</h2>
-          <p>Сохранённые матчи появятся после записи статистики.</p>
-        </div>
+        ${renderEmptyState({
+          title: noRealData ? 'Матчей пока нет' : 'Матчи не найдены',
+          text: noRealData ? 'Создайте первый матч и начните запись статистики.' : 'Измените фильтры или сбросьте выбранный период.',
+          action: noRealData ? 'open-stats-setup' : 'reset-filters',
+          actionText: noRealData ? 'Записать матч' : 'Сбросить фильтры'
+        })}
       `}
     `;
   }
@@ -2041,7 +2628,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <h2>Сравнение матчей</h2>
           <button class="text-button" type="button" data-results-action="open-compare">Открыть</button>
         </div>
-        ${matches.length < 2 ? '<div class="results-state compact">Недостаточно данных для сравнения.</div>' : `
+        ${matches.length < 2 ? renderEmptyState({
+          title: 'Недостаточно данных',
+          text: 'Для сравнения нужно минимум два сохранённых матча.',
+          compact: true
+        }) : `
           <div class="compare-controls">
             <select data-compare-index="0">
               ${matches.map((match) => option(match.id, `${formatDate(match.date)} · ${match.opponent}`, first || matches[0].id)).join('')}
@@ -2083,6 +2674,11 @@ document.addEventListener('DOMContentLoaded', () => {
           ${actionPill('Защита', teamStats.byAction.defense.total)}
           ${actionPill('Ошибки', teamStats.errors.total, 'danger')}
         </div>
+        ${match.isMock ? '' : `
+          <div class="match-card-actions">
+            <button class="text-button danger-outline" type="button" data-results-action="delete-match" data-match-id="${escapeHtml(match.id)}">Удалить матч</button>
+          </div>
+        `}
       </article>
     `;
   }
@@ -2099,7 +2695,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderResultMatch(content) {
     const match = getSelectedMatch();
     if (!match) {
-      content.innerHTML = '<div class="results-state"><h2>Матч не найден</h2></div>';
+      content.innerHTML = renderErrorState({
+        title: 'Не удалось открыть матч',
+        text: 'Матч не найден или был удалён.',
+        action: 'back-home',
+        actionText: 'Все результаты'
+      });
       return;
     }
 
@@ -2118,7 +2719,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <p>${escapeHtml(formatDate(match.date))} · ${escapeHtml(match.tournament)} · ${escapeHtml(place)}</p>
         </div>
         <div class="detail-score">${escapeHtml(match.finalScore || '—')}</div>
-        <button class="primary-action" type="button" data-results-action="export-match" data-match-id="${escapeHtml(match.id)}">PDF матча</button>
+        <div class="match-detail-actions">
+          <button class="primary-action" type="button" data-results-action="export-match" data-match-id="${escapeHtml(match.id)}">PDF матча</button>
+          ${match.isMock ? '' : `<button class="text-button danger-outline" type="button" data-results-action="delete-match" data-match-id="${escapeHtml(match.id)}">Удалить матч</button>`}
+        </div>
       </section>
 
       <section class="results-section">
@@ -2151,6 +2755,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const bench = Array.isArray(match.bench) && match.bench.length
       ? match.bench
       : roster.filter((player) => player.status === 'запас');
+
+    if (!roster.length) {
+      return `
+        <details class="results-section" open>
+          <summary>Состав</summary>
+          ${renderEmptyState({
+            title: 'Состав не заполнен',
+            text: 'Добавьте игроков в команду.',
+            compact: true
+          })}
+        </details>
+      `;
+    }
 
     return `
       <details class="results-section" open>
@@ -2326,7 +2943,11 @@ document.addEventListener('DOMContentLoaded', () => {
               <tbody>${events.map(renderEventRow).join('')}</tbody>
             </table>
           </div>
-        ` : '<div class="results-state compact">Нет событий по выбранным фильтрам.</div>'}
+        ` : renderEmptyState({
+          title: (match.events || []).length ? 'Нет событий по фильтрам' : 'Журнал пуст',
+          text: (match.events || []).length ? 'Измените фильтры журнала действий.' : 'Действия появятся здесь во время записи статистики.',
+          compact: true
+        })}
       </details>
     `;
   }
@@ -2387,7 +3008,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const player = matchPlayers.find((item) => item.playerId === state.results.selectedPlayerId)
       || seasonPlayers.find((item) => item.playerId === state.results.selectedPlayerId);
     if (!player) {
-      content.innerHTML = '<div class="results-state"><h2>Игрок не найден</h2></div>';
+      content.innerHTML = renderErrorState({
+        title: 'Игрок не найден',
+        text: 'Статистика игрока недоступна или матч был удалён.',
+        action: 'back-match',
+        actionText: 'К матчу'
+      });
       return;
     }
 
@@ -2492,7 +3118,10 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="results-section-head"><h2>Проблемные зоны</h2></div>
           <div class="best-grid">${comparison.problemZones.map((item) => `<div class="best-card problem"><span>${escapeHtml(item.action)}</span><strong>-${window.SetkaStatsCore.formatPercent(item.minusPercent)}</strong><small>${item.total} действий</small></div>`).join('')}</div>
         </section>
-      ` : '<div class="results-state">Недостаточно данных для сравнения.</div>'}
+      ` : renderEmptyState({
+        title: 'Недостаточно данных',
+        text: 'Для сравнения нужно минимум два сохранённых матча.'
+      })}
     `;
   }
 
@@ -2528,6 +3157,18 @@ document.addEventListener('DOMContentLoaded', () => {
       state.results.filters = { status: 'all', tournament: '', opponent: '', venue: '', result: '', dateFrom: '', dateTo: '', last: '' };
       state.results.cacheKey = '';
       renderResults();
+      return;
+    }
+
+    if (action === 'retry-results') {
+      state.results.cacheKey = '';
+      state.results.cache = null;
+      renderResults();
+      return;
+    }
+
+    if (action === 'open-stats-setup') {
+      showScreen('stats');
       return;
     }
 
@@ -2584,17 +3225,20 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (action === 'delete-match') {
+      deleteResultsMatch(button.dataset.matchId);
+      return;
+    }
+
     if (action === 'export-team') {
       const data = getResultsData();
-      const ok = window.SetkaPdfExport.exportTeamPdf(data.filteredMatches, 'Выбранный период');
-      if (!ok) alert('Окно печати заблокировано. Подготовлен HTML-файл, его можно открыть и сохранить в PDF.');
+      executePdfExport(() => window.SetkaPdfExport.exportTeamPdf(data.filteredMatches, 'Выбранный период'));
       return;
     }
 
     if (action === 'export-match') {
       const match = getSelectedMatch();
-      const ok = window.SetkaPdfExport.exportMatchPdf(match);
-      if (!ok) alert('Окно печати заблокировано. Подготовлен HTML-файл, его можно открыть и сохранить в PDF.');
+      executePdfExport(() => window.SetkaPdfExport.exportMatchPdf(match));
       return;
     }
 
@@ -2602,8 +3246,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = getResultsData();
       const player = window.SetkaStatsPlayers.calculatePlayerStats(data.matches, TEAM_DATA.id)
         .find((item) => item.playerId === button.dataset.playerId);
-      const ok = window.SetkaPdfExport.exportPlayerPdf(player, data.matches);
-      if (!ok) alert('Окно печати заблокировано. Подготовлен HTML-файл, его можно открыть и сохранить в PDF.');
+      if (!player) {
+        showToast('Нет данных для PDF игрока', 'warning');
+        return;
+      }
+      executePdfExport(() => window.SetkaPdfExport.exportPlayerPdf(player, data.matches));
       return;
     }
 
@@ -2613,28 +3260,113 @@ document.addEventListener('DOMContentLoaded', () => {
         .map((id) => data.matches.find((match) => match.id === id))
         .filter(Boolean);
       const comparison = window.SetkaStatsCompare.compareMatches(selected.length >= 2 ? selected : data.filteredMatches.slice(0, 2), TEAM_DATA.id);
-      const ok = window.SetkaPdfExport.exportComparePdf(comparison);
-      if (!ok) alert('Окно печати заблокировано. Подготовлен HTML-файл, его можно открыть и сохранить в PDF.');
+      executePdfExport(() => window.SetkaPdfExport.exportComparePdf(comparison));
     }
   }
 
-  function deleteResultsEvent(eventId) {
-    if (!eventId || !confirm('Удалить выбранное действие? Статистика будет пересчитана.')) return;
-    if (window.SetkaStorageEvents?.deleteEvent(eventId)) {
+  async function deleteResultsEvent(eventId) {
+    if (!eventId) return;
+    const ok = await confirmModal({
+      title: 'Удалить действие?',
+      message: 'Статистика матча будет пересчитана.',
+      confirmText: 'Удалить',
+      danger: true
+    });
+    if (!ok) return;
+    if (window.SetkaStorageEvents?.deleteEvent(eventId, TEAM_DATA.id)) {
       state.results.cacheKey = '';
       saveCurrentMatch();
       renderResults();
+      showToast('Действие удалено');
+      window.setTimeout(() => showToast('Статистика обновлена', 'info'), 220);
+    } else {
+      showToast('Не удалось удалить действие', 'error');
     }
   }
 
-  function deleteLastResultsEvent(matchId) {
-    if (!confirm('Удалить последнее действие в этом матче?')) return;
-    const removed = window.SetkaStorageEvents?.deleteLast(matchId);
+  async function deleteLastResultsEvent(matchId) {
+    const ok = await confirmModal({
+      title: 'Удалить последнее действие?',
+      message: 'Последнее действие в этом матче будет удалено, статистика пересчитается.',
+      confirmText: 'Удалить',
+      danger: true
+    });
+    if (!ok) return;
+    const removed = window.SetkaStorageEvents?.deleteLast(matchId, TEAM_DATA.id);
     if (removed) {
       state.results.cacheKey = '';
       saveCurrentMatch();
       renderResults();
+      showToast('Последнее действие удалено');
+      window.setTimeout(() => showToast('Статистика обновлена', 'info'), 220);
+    } else {
+      showToast('Не удалось удалить действие', 'error');
     }
+  }
+
+  async function deleteResultsMatch(matchId) {
+    const data = getResultsData();
+    const match = data.matches.find((item) => item.id === matchId);
+    if (!match) {
+      showToast('Матч не найден', 'warning');
+      return;
+    }
+
+    if (match.isMock) {
+      showToast('Демонстрационный матч не удаляется', 'warning');
+      return;
+    }
+
+    if (match.teamId && match.teamId !== TEAM_DATA.id) {
+      showToast('Матч относится к другому профилю', 'warning');
+      return;
+    }
+
+    const ok = await confirmModal({
+      title: 'Удалить матч?',
+      message: 'Матч и вся связанная статистика будут удалены. Это действие нельзя отменить.',
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      danger: true
+    });
+    if (!ok) return;
+
+    const content = $('#results-content');
+    if (content) content.innerHTML = renderLoadingState('Удаление матча');
+
+    let removedMatch = false;
+    let removedEvents = 0;
+    try {
+      removedMatch = window.SetkaStorageMatches?.deleteMatch(match.id, TEAM_DATA.id);
+      removedEvents = window.SetkaStorageEvents?.deleteByMatch(match.id, TEAM_DATA.id) || 0;
+      window.SetkaStorageMatches?.deleteSubstitutionsByMatch?.(match.id, TEAM_DATA.id);
+    } catch (error) {
+      console.error('Match delete error', error);
+      if (content) {
+        content.innerHTML = renderErrorState({
+          title: 'Не удалось удалить матч',
+          text: 'Локальное хранилище вернуло ошибку. Данные не были намеренно очищены.',
+          action: 'retry-results'
+        });
+      }
+      showToast('Не удалось удалить матч', 'error');
+      return;
+    }
+
+    if (state.currentMatch && state.currentMatch.id === match.id) {
+      state.currentMatch = null;
+      state.statsLineup = [];
+      state.currentSet = 1;
+    }
+
+    state.results.cacheKey = '';
+    state.results.cache = null;
+    state.results.selectedMatchId = '';
+    state.results.compareIds = state.results.compareIds.filter((id) => id !== match.id);
+    state.results.view = 'home';
+    renderResults();
+    renderTeam();
+    showToast(removedMatch || removedEvents ? 'Матч удалён' : 'Матч уже был удалён', removedMatch || removedEvents ? 'success' : 'warning');
   }
 
   async function requestWakeLock() {

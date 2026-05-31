@@ -44,6 +44,19 @@
     return player?.photo || '';
   }
 
+  function normalizeSetNumber(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) return 1;
+    return Math.min(5, Math.max(1, Math.round(parsed)));
+  }
+
+  function normalizeScoreValue(value) {
+    if (value === '' || value === null || typeof value === 'undefined') return 0;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return 0;
+    return Math.round(parsed);
+  }
+
   function playerSnapshot(player, status) {
     return {
       playerId: player.id,
@@ -79,6 +92,7 @@
 
   function normalizeEventName(event, teamId) {
     if (!event || typeof event !== 'object') return event;
+    const timestamp = event.timestamp || event.time || event.createdAt || new Date().toISOString();
     return {
       ...event,
       teamId: event.teamId || teamId || '',
@@ -86,7 +100,11 @@
       playerPhoto: getPlayerPhoto({
         photo: event.playerPhoto || event.photo || '',
         teamId: event.teamId || teamId || ''
-      })
+      }),
+      setNumber: normalizeSetNumber(event.setNumber || event.set || event.party || 1),
+      timestamp,
+      createdAt: event.createdAt || timestamp,
+      updatedAt: event.updatedAt || timestamp
     };
   }
 
@@ -125,13 +143,71 @@
     });
   }
 
-  function normalizeSetScores(value) {
+  function normalizeSets(value) {
+    const source = Array.isArray(value) ? value : [];
+    const bySet = new Map();
+
+    source.forEach((item, index) => {
+      const fallbackNumber = index + 1;
+      if (typeof item === 'string') {
+        const parts = item.split(/[:\-]/);
+        const setNumber = normalizeSetNumber(fallbackNumber);
+        const ourScore = normalizeScoreValue(parts[0]);
+        const opponentScore = normalizeScoreValue(parts[1]);
+        bySet.set(setNumber, {
+          setNumber,
+          ourScore,
+          opponentScore,
+          ours: ourScore,
+          opponent: opponentScore,
+          score: `${ourScore}:${opponentScore}`
+        });
+        return;
+      }
+
+      if (item && typeof item === 'object') {
+        const parts = typeof item.score === 'string' ? item.score.split(/[:\-]/) : [];
+        const setNumber = normalizeSetNumber(item.setNumber || item.number || fallbackNumber);
+        const ourScore = normalizeScoreValue(item.ourScore ?? item.ours ?? parts[0]);
+        const opponentScore = normalizeScoreValue(item.opponentScore ?? item.opponent ?? parts[1]);
+        bySet.set(setNumber, {
+          ...item,
+          setNumber,
+          ourScore,
+          opponentScore,
+          ours: ourScore,
+          opponent: opponentScore,
+          score: `${ourScore}:${opponentScore}`
+        });
+      }
+    });
+
+    return Array.from({ length: 5 }, (_, index) => {
+      const setNumber = index + 1;
+      return bySet.get(setNumber) || {
+        setNumber,
+        ourScore: 0,
+        opponentScore: 0,
+        ours: 0,
+        opponent: 0,
+        score: '0:0'
+      };
+    });
+  }
+
+  function normalizeSetScores(value, normalizedSets = []) {
     if (Array.isArray(value)) {
-      return value.map((item) => {
+      const scores = value.map((item) => {
         if (typeof item === 'string') return item;
-        if (item && typeof item === 'object') return item.score || `${item.ours ?? ''}:${item.opponent ?? ''}`;
+        if (item && typeof item === 'object') {
+          const ourScore = normalizeScoreValue(item.ourScore ?? item.ours);
+          const opponentScore = normalizeScoreValue(item.opponentScore ?? item.opponent);
+          if (!ourScore && !opponentScore) return '';
+          return item.score || `${ourScore}:${opponentScore}`;
+        }
         return String(item || '');
       }).filter(Boolean);
+      if (scores.length) return scores;
     }
     if (!value) return [];
     return String(value).split(',').map((item) => item.trim()).filter(Boolean);
@@ -163,8 +239,10 @@
         : [])
       .map(normalizeLineupItem);
     const location = match.location || match.venue || match.place || 'Площадка не указана';
-    const setScores = normalizeSetScores(match.setScores || match.sets || []);
+    const sets = normalizeSets(match.sets || match.setScores || []);
+    const setScores = normalizeSetScores(match.setScores || match.sets || [], sets);
     const finalScore = match.finalScore || match.score || '—';
+    const currentSet = normalizeSetNumber(match.currentSet || match.setNumber || 1);
 
     const normalized = {
       id,
@@ -181,11 +259,12 @@
       matchFormat: match.matchFormat || 'до 3 партий',
       finalScore,
       setScores,
-      sets: Array.isArray(match.sets) ? match.sets : setScores,
+      sets,
       result: match.result || '',
       coachComment: match.coachComment || match.comment || '',
       status: match.status || (matchEvents.length > 0 ? 'сохранён локально' : 'черновик'),
-      setNumber: Math.min(5, Math.max(1, Number(match.setNumber || match.currentSet || 1) || 1)),
+      currentSet,
+      setNumber: currentSet,
       roster: Array.isArray(match.roster) && match.roster.length ? match.roster.map((player) => normalizeRosterPlayer(player, teamId)) : [],
       lineup: startingLineup,
       startingLineup,
@@ -222,6 +301,10 @@
     safeSave(MATCHES_KEY, matches);
   }
 
+  function belongsToTeam(item, teamId) {
+    return !teamId || !item?.teamId || item.teamId === teamId;
+  }
+
   function upsert(match) {
     const saved = loadSavedRaw();
     const id = match.id || match.matchId;
@@ -244,19 +327,19 @@
     saveSavedRaw(saved);
   }
 
-  function deleteMatch(matchId) {
+  function deleteMatch(matchId, teamId = '') {
     const id = String(matchId || '');
     if (!id) return false;
     const saved = loadSavedRaw();
-    const next = saved.filter((item) => String(item.id || item.matchId || '') !== id);
+    const next = saved.filter((item) => String(item.id || item.matchId || '') !== id || !belongsToTeam(item, teamId));
     saveSavedRaw(next);
 
     const current = safeLoad(CURRENT_MATCH_KEY, null);
-    if (current && String(current.id || current.matchId || '') === id) {
+    if (current && String(current.id || current.matchId || '') === id && belongsToTeam(current, teamId)) {
       localStorage.removeItem(CURRENT_MATCH_KEY);
     }
 
-    return next.length !== saved.length || Boolean(current && String(current.id || current.matchId || '') === id);
+    return next.length !== saved.length || Boolean(current && String(current.id || current.matchId || '') === id && belongsToTeam(current, teamId));
   }
 
   function clearCurrent(matchId) {
@@ -272,6 +355,15 @@
     substitutions.push(substitution);
     safeSave(SUBSTITUTIONS_KEY, substitutions);
     return substitutions;
+  }
+
+  function deleteSubstitutionsByMatch(matchId, teamId = '') {
+    const id = String(matchId || '');
+    if (!id) return 0;
+    const substitutions = loadSubstitutions();
+    const next = substitutions.filter((item) => String(item.matchId || '') !== id || !belongsToTeam(item, teamId));
+    safeSave(SUBSTITUTIONS_KEY, next);
+    return substitutions.length - next.length;
   }
 
   function createMockEvents(matchId, teamId, players, seed) {
@@ -418,6 +510,7 @@
     deleteMatch,
     clearCurrent,
     appendSubstitution,
+    deleteSubstitutionsByMatch,
     getLoadInfo,
     buildRoster,
     playerSnapshot,

@@ -27,10 +27,22 @@
     return player?.photo || '';
   }
 
+  function normalizeSetNumber(value) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 1) return 1;
+    return Math.min(5, Math.max(1, Math.round(parsed)));
+  }
+
+  function sameTeam(event, teamId) {
+    return !teamId || !event.teamId || event.teamId === teamId;
+  }
+
   function normalizeEvent(event) {
     if (!event || typeof event !== 'object') return null;
-    const timestamp = event.timestamp || event.time || new Date().toISOString();
-    const setNumber = event.setNumber || event.set || event.party || null;
+    const timestamp = event.timestamp || event.time || event.createdAt || new Date().toISOString();
+    const createdAt = event.createdAt || timestamp;
+    const updatedAt = event.updatedAt || event.changedAt || createdAt;
+    const setNumber = normalizeSetNumber(event.setNumber || event.set || event.party || 1);
 
     return {
       id: String(event.id || `event-${Date.now()}-${Math.random().toString(16).slice(2)}`),
@@ -50,7 +62,9 @@
       actionName: event.actionName || '',
       actionResult: event.actionResult || event.result || '',
       resultLabel: event.resultLabel || event.label || event.actionResult || event.result || '',
-      timestamp
+      timestamp,
+      createdAt,
+      updatedAt
     };
   }
 
@@ -77,17 +91,37 @@
     return loadAll().filter((event) => event.matchId === matchId);
   }
 
-  function deleteEvent(eventId) {
+  function updateEvent(eventId, patch = {}, teamId = '') {
+    const id = String(eventId || '');
+    if (!id) return null;
     const events = loadAll();
-    const next = events.filter((event) => event.id !== eventId);
+    const index = events.findIndex((event) => event.id === id && sameTeam(event, teamId));
+    if (index < 0) return null;
+    const updated = normalizeEvent({
+      ...events[index],
+      ...patch,
+      id,
+      matchId: patch.matchId || events[index].matchId,
+      teamId: patch.teamId || events[index].teamId,
+      updatedAt: new Date().toISOString()
+    });
+    if (!updated) return null;
+    events[index] = updated;
+    saveAll(events);
+    return updated;
+  }
+
+  function deleteEvent(eventId, teamId = '') {
+    const events = loadAll();
+    const next = events.filter((event) => event.id !== eventId || !sameTeam(event, teamId));
     saveAll(next);
     return events.length !== next.length;
   }
 
-  function deleteLast(matchId) {
+  function deleteLast(matchId, teamId = '') {
     const events = loadAll();
     for (let index = events.length - 1; index >= 0; index -= 1) {
-      if (!matchId || events[index].matchId === matchId) {
+      if ((!matchId || events[index].matchId === matchId) && sameTeam(events[index], teamId)) {
         const [removed] = events.splice(index, 1);
         saveAll(events);
         return removed || null;
@@ -96,11 +130,11 @@
     return null;
   }
 
-  function deleteByMatch(matchId) {
+  function deleteByMatch(matchId, teamId = '') {
     const id = String(matchId || '');
     if (!id) return 0;
     const events = loadAll();
-    const next = events.filter((event) => event.matchId !== id);
+    const next = events.filter((event) => event.matchId !== id || !sameTeam(event, teamId));
     saveAll(next);
     return events.length - next.length;
   }
@@ -111,6 +145,7 @@
     saveAll,
     appendEvent,
     getByMatch,
+    updateEvent,
     deleteEvent,
     deleteLast,
     deleteByMatch,
