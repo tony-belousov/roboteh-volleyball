@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.10.2';
+  const APP_VERSION = '2026.06.10.3';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -705,6 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#finish-match-button')?.addEventListener('click', openFinishMatchModal);
     $('#delete-draft-button')?.addEventListener('click', deleteActiveMatchDraft);
     $('#undo-last-event-button')?.addEventListener('click', undoLastStatEvent);
+    $('#stats-journal-top-button')?.addEventListener('click', openStatsJournalMode);
     $('#stats-set-tabs')?.addEventListener('click', handleStatsSetTabsClick);
     $('#stats-score-panel')?.addEventListener('click', handleStatsScoreClick);
     $('#stats-live-journal')?.addEventListener('change', handleStatsJournalChange);
@@ -1868,6 +1869,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!state.statsJournalOpen) state.editingStatsEventId = '';
   }
 
+  function openStatsJournalMode() {
+    const details = $('#stats-live-journal');
+    if (!details) return;
+    details.open = true;
+    applyStatsJournalMode(true);
+    renderStatsJournal();
+  }
+
   function handleStatsJournalToggle(event) {
     applyStatsJournalMode(event.currentTarget.open);
     if (event.currentTarget.open) renderStatsJournal();
@@ -1984,9 +1993,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const finishButton = $('#finish-match-button');
     const deleteButton = $('#delete-draft-button');
     const undoButton = $('#undo-last-event-button');
+    const journalButton = $('#stats-journal-top-button');
     if (finishButton) finishButton.disabled = !match;
     if (deleteButton) deleteButton.disabled = !match;
     if (undoButton) undoButton.disabled = !match || !getCurrentMatchEvents().length;
+    if (journalButton) journalButton.disabled = !match;
 
     const grid = $('#stats-grid');
     grid.innerHTML = '';
