@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.10.4';
+  const APP_VERSION = '2026.06.10.5';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {

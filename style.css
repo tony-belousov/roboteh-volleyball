@@ -3600,3 +3600,88 @@ details.results-section summary {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+
+/* Journal mode is a dedicated screen inside the recorder. Keep the header and
+   filters fixed while the event list owns the vertical touch scroll. */
+.stats-screen .stats-workbench.journal-mode {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stats-screen .stats-workbench.journal-mode .stats-topbar {
+  flex: 0 0 auto;
+}
+
+.stats-screen .stats-workbench.journal-mode .stats-grid-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stats-screen .stats-workbench.journal-mode .stats-live-journal[open] {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.stats-screen .stats-workbench.journal-mode .stats-live-journal summary,
+.stats-screen .stats-workbench.journal-mode .stats-journal-filters {
+  flex: 0 0 auto;
+}
+
+.stats-screen .stats-workbench.journal-mode .stats-journal-list {
+  flex: 1 1 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+@media (orientation: landscape) {
+  .stats-screen .stats-workbench.journal-mode .stats-grid-shell {
+    padding-top: 4px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+
+  .stats-screen .stats-workbench.journal-mode .stats-live-journal summary {
+    min-height: 36px;
+  }
+
+  .stats-screen .stats-workbench.journal-mode .stats-journal-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    padding: 0 6px 6px;
+  }
+
+  .stats-screen .stats-workbench.journal-mode .stats-journal-filters select {
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+  .stats-screen .stats-workbench.journal-mode .stats-journal-event {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .stats-screen .stats-workbench.journal-mode .stats-journal-actions button {
+    min-height: 36px;
+  }
+}

@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026.06.10.4';
+const CACHE_VERSION = '2026.06.10.5';
 const APP_SHELL_CACHE = `setka-app-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `setka-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `setka-images-${CACHE_VERSION}`;
