@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.10.5';
+  const APP_VERSION = '2026.06.10.6';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -194,6 +194,8 @@ document.addEventListener('DOMContentLoaded', () => {
       cache: null
     }
   };
+
+  let statsJournalScrollFrame = 0;
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -711,6 +713,11 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#stats-live-journal')?.addEventListener('change', handleStatsJournalChange);
     $('#stats-live-journal')?.addEventListener('click', handleStatsJournalClick);
     $('#stats-live-journal')?.addEventListener('toggle', handleStatsJournalToggle);
+    window.addEventListener('resize', scheduleStatsJournalScrollUpdate);
+    window.addEventListener('orientationchange', () => {
+      window.setTimeout(scheduleStatsJournalScrollUpdate, 180);
+    });
+    window.visualViewport?.addEventListener('resize', scheduleStatsJournalScrollUpdate);
     $('#finish-match-save')?.addEventListener('click', saveFinishedMatch);
     $('#finish-match-cancel')?.addEventListener('click', closeFinishMatchModal);
     $('#finish-match-modal')?.addEventListener('click', handleFinishModalClick);
@@ -1851,6 +1858,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function resetStatsJournalScrollArea() {
+    const listNode = $('#stats-journal-list');
+    if (!listNode) return;
+    listNode.style.removeProperty('height');
+    listNode.style.removeProperty('max-height');
+    listNode.style.removeProperty('flex');
+    listNode.style.removeProperty('overflow-y');
+    listNode.style.removeProperty('overflow-x');
+    listNode.style.removeProperty('-webkit-overflow-scrolling');
+  }
+
+  function updateStatsJournalScrollArea() {
+    statsJournalScrollFrame = 0;
+    const details = $('#stats-live-journal');
+    const listNode = $('#stats-journal-list');
+    const workbench = $('.stats-workbench');
+    if (!details || !listNode || !workbench?.classList.contains('journal-mode') || !details.open) {
+      resetStatsJournalScrollArea();
+      return;
+    }
+
+    const visualViewport = window.visualViewport;
+    const viewportHeight = visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
+    const listTop = listNode.getBoundingClientRect().top;
+    const bottomReserve = 18;
+    const availableHeight = Math.max(132, Math.floor(viewportHeight - listTop - bottomReserve));
+
+    listNode.style.height = `${availableHeight}px`;
+    listNode.style.maxHeight = `${availableHeight}px`;
+    listNode.style.flex = '0 0 auto';
+    listNode.style.overflowX = 'hidden';
+    listNode.style.overflowY = 'auto';
+    listNode.style.setProperty('-webkit-overflow-scrolling', 'touch');
+  }
+
+  function scheduleStatsJournalScrollUpdate() {
+    if (statsJournalScrollFrame) window.cancelAnimationFrame(statsJournalScrollFrame);
+    statsJournalScrollFrame = window.requestAnimationFrame(updateStatsJournalScrollArea);
+  }
+
   function closeStatsJournalMode() {
     const details = $('#stats-live-journal');
     if (details) details.open = false;
@@ -1859,6 +1906,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $('.stats-workbench')?.classList.remove('journal-mode');
     const label = $('.journal-summary-state');
     if (label) label.textContent = 'Открыть';
+    resetStatsJournalScrollArea();
   }
 
   function applyStatsJournalMode(isOpen) {
@@ -1867,6 +1915,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const label = $('.journal-summary-state');
     if (label) label.textContent = state.statsJournalOpen ? 'Назад к записи' : 'Открыть';
     if (!state.statsJournalOpen) state.editingStatsEventId = '';
+    if (state.statsJournalOpen) scheduleStatsJournalScrollUpdate();
+    else resetStatsJournalScrollArea();
   }
 
   function openStatsJournalMode() {
@@ -1925,6 +1975,7 @@ document.addEventListener('DOMContentLoaded', () => {
         text: 'Запишите первое действие игрока, и оно появится здесь.',
         compact: true
       });
+      scheduleStatsJournalScrollUpdate();
       return;
     }
     if (!filtered.length) {
@@ -1933,10 +1984,12 @@ document.addEventListener('DOMContentLoaded', () => {
         text: 'Измените фильтры журнала.',
         compact: true
       });
+      scheduleStatsJournalScrollUpdate();
       return;
     }
 
     listNode.innerHTML = filtered.map((event) => renderStatsJournalEvent(event, players)).join('');
+    scheduleStatsJournalScrollUpdate();
   }
 
   function renderStatsJournalEvent(event, players) {

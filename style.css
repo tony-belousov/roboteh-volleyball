@@ -3640,7 +3640,7 @@ details.results-section summary {
 }
 
 .stats-screen .stats-workbench.journal-mode .stats-journal-list {
-  flex: 1 1 0;
+  flex: 0 0 auto;
   min-height: 0;
   height: auto;
   max-height: none;
