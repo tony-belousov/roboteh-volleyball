@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.10.3';
+  const APP_VERSION = '2026.06.10.4';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -1936,7 +1936,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    listNode.innerHTML = filtered.slice(0, 80).map((event) => renderStatsJournalEvent(event, players)).join('');
+    listNode.innerHTML = filtered.map((event) => renderStatsJournalEvent(event, players)).join('');
   }
 
   function renderStatsJournalEvent(event, players) {

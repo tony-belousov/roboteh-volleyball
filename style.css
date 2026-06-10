@@ -1596,24 +1596,38 @@ img.avatar {
   display: none;
 }
 
+.stats-workbench.journal-mode {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .stats-workbench.journal-mode .stats-grid-shell {
   display: grid;
+  height: 100%;
+  min-height: 0;
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
 }
 
 .stats-workbench.journal-mode .stats-live-journal[open] {
   height: 100%;
+  min-height: 0;
   max-height: none;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   margin-top: 0;
+  overflow: hidden;
 }
 
 .stats-workbench.journal-mode .stats-journal-list {
   max-height: none;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
 }
 
 .stats-tutorial-overlay {
@@ -1922,26 +1936,26 @@ img.avatar {
   }
 
   .stats-topbar {
-    height: calc(38px + env(safe-area-inset-top));
+    height: calc(44px + env(safe-area-inset-top));
     grid-template-columns: 76px minmax(0, 1fr) auto minmax(82px, auto);
     grid-template-areas: "menu title actions save";
     gap: 5px;
     padding:
-      env(safe-area-inset-top)
+      calc(env(safe-area-inset-top) + 6px)
       max(6px, env(safe-area-inset-right))
       4px
       max(6px, env(safe-area-inset-left));
   }
 
   .stats-menu-button {
-    min-height: 32px;
+    min-height: 34px;
     padding: 0 9px;
     font-size: 12px;
   }
 
   .stats-small-button {
     min-width: 52px;
-    min-height: 30px;
+    min-height: 32px;
     padding: 0 7px;
     font-size: 11px;
   }
@@ -1967,7 +1981,7 @@ img.avatar {
   }
 
   .stats-grid-shell {
-    height: calc(100% - 38px - env(safe-area-inset-top));
+    height: calc(100% - 44px - env(safe-area-inset-top));
     grid-template-rows: auto minmax(0, 1fr);
     gap: 3px;
     padding:
@@ -2126,7 +2140,7 @@ img.avatar {
   }
 
   .stats-workbench.journal-mode .stats-grid-shell {
-    height: calc(100% - 38px - env(safe-area-inset-top));
+    height: 100%;
     grid-template-rows: minmax(0, 1fr);
     overflow: hidden;
   }
@@ -2134,28 +2148,29 @@ img.avatar {
 
 @media (orientation: landscape) and (max-height: 430px) {
   .stats-topbar {
-    height: calc(34px + env(safe-area-inset-top));
+    height: calc(42px + env(safe-area-inset-top));
     grid-template-columns: 68px minmax(0, 1fr) auto minmax(72px, auto);
     gap: 4px;
+    padding-top: calc(env(safe-area-inset-top) + 6px);
   }
 
   .stats-menu-button {
-    min-height: 28px;
-    height: 28px;
+    min-height: 32px;
+    height: 32px;
     padding: 0 7px;
     font-size: 11px;
   }
 
   .stats-small-button {
     min-width: 48px;
-    min-height: 28px;
-    height: 28px;
+    min-height: 32px;
+    height: 32px;
     padding: 0 6px;
     font-size: 10px;
   }
 
   .stats-grid-shell {
-    height: calc(100% - 34px - env(safe-area-inset-top));
+    height: calc(100% - 42px - env(safe-area-inset-top));
     padding-top: 3px;
   }
 
@@ -2170,8 +2185,8 @@ img.avatar {
   }
 
   .stats-grid {
-    min-height: 276px;
-    grid-template-rows: 17px repeat(7, minmax(34px, 1fr));
+    min-height: 266px;
+    grid-template-rows: 16px repeat(7, minmax(32px, 1fr));
     gap: 3px;
   }
 
@@ -2181,7 +2196,7 @@ img.avatar {
   }
 
   .stats-player-cell {
-    min-height: 34px;
+    min-height: 33px;
   }
 
   .stats-player-cell .avatar.tiny {
@@ -2190,13 +2205,13 @@ img.avatar {
   }
 
   .stats-action-cell {
-    min-height: 34px;
+    min-height: 33px;
     gap: 2px;
     padding: 2px;
   }
 
   .stat-button {
-    min-height: 30px;
+    min-height: 29px;
     font-size: 14px;
   }
 
@@ -2214,7 +2229,7 @@ img.avatar {
   }
 
   .stats-workbench.journal-mode .stats-grid-shell {
-    height: calc(100% - 34px - env(safe-area-inset-top));
+    height: 100%;
   }
 }
 
@@ -2376,12 +2391,15 @@ img.avatar {
 
   .stats-workbench.journal-mode .stats-grid-shell {
     display: grid;
-    height: auto;
+    height: 100%;
     min-height: 0;
+    overflow: hidden;
   }
 
   .stats-workbench.journal-mode .stats-live-journal[open] {
-    min-height: min(68dvh, 620px);
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
   }
 }
 
@@ -3023,6 +3041,9 @@ details.results-section summary {
 
   .stats-workbench.journal-mode .stats-journal-list {
     max-height: none;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
 
   .pdf-preview-header {
