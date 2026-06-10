@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.05.31.2';
+  const APP_VERSION = '2026.06.10.1';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
     matches: 'setka.matches',
     currentMatch: 'setka.currentMatch',
     statsEvents: 'setka.statsEvents',
-    substitutions: 'setka.substitutions'
+    substitutions: 'setka.substitutions',
+    statsTutorialSeen: 'setka.statsTutorialSeen'
   };
 
   const MENU_ITEMS = {
@@ -77,6 +78,44 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
   const ACTION_GROUP_BY_TYPE = Object.fromEntries(ACTION_GROUPS.map((group) => [group.type, group]));
 
+  const STATS_TUTORIAL_STEPS = [
+    {
+      selector: '#stats-set-tabs',
+      title: 'Выберите партию',
+      text: 'Здесь выбирается текущая партия. Все новые действия будут записаны именно в неё.'
+    },
+    {
+      selector: '#stats-score-panel .score-box',
+      title: 'Следите за счётом',
+      text: 'Счёт выбранной партии всегда виден рядом с рабочими кнопками.'
+    },
+    {
+      selector: '#stats-score-panel .score-controls',
+      title: 'Добавляйте очки',
+      text: 'Крупные кнопки быстро меняют счёт вашей команды и соперника.'
+    },
+    {
+      selector: '.stats-row:not(.stats-header-row)',
+      title: 'Записывайте действия игрока',
+      text: 'В карточке игрока выбирайте подачу, приём, атаку, блок, защиту или ошибку.'
+    },
+    {
+      selector: '#undo-last-event-button',
+      title: 'Отменяйте последнее действие',
+      text: 'Если ошиблись во время матча, можно быстро отменить последнее записанное действие.'
+    },
+    {
+      selector: '#stats-live-journal summary',
+      title: 'Открывайте журнал',
+      text: 'В журнале можно посмотреть, изменить или удалить записанные события.'
+    },
+    {
+      selector: '',
+      title: 'Готово',
+      text: 'Можно начинать запись статистики матча.'
+    }
+  ];
+
   const ROLE_ORDER = {
     opposite: 1,
     outside: 2,
@@ -118,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastTapAt: 0,
     autosaveTimer: null,
     wakeLock: null,
+    statsTutorialStep: 0,
     statsJournalFilters: {
       setNumber: '',
       playerId: '',
@@ -488,7 +528,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     closeSubstitution();
-    closeSetMenu();
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 
     if (screenName === 'stats') {
@@ -593,6 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
       section.classList.toggle('hidden');
       renderTeamSeasonStats();
     });
+    $('#team-start-match')?.addEventListener('click', () => showScreen('stats'));
 
     $('#pin-submit')?.addEventListener('click', submitPin);
     $('#pin-input')?.addEventListener('keydown', (event) => {
@@ -608,8 +648,6 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#finish-match-button')?.addEventListener('click', openFinishMatchModal);
     $('#delete-draft-button')?.addEventListener('click', deleteActiveMatchDraft);
     $('#undo-last-event-button')?.addEventListener('click', undoLastStatEvent);
-    $('#stats-set-button')?.addEventListener('click', toggleSetMenu);
-    $('#stats-set-menu')?.addEventListener('click', handleSetMenuClick);
     $('#stats-set-tabs')?.addEventListener('click', handleStatsSetTabsClick);
     $('#stats-score-panel')?.addEventListener('click', handleStatsScoreClick);
     $('#stats-live-journal')?.addEventListener('change', handleStatsJournalChange);
@@ -621,6 +659,8 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#results-content')?.addEventListener('click', handleResultsClick);
     $('#results-content')?.addEventListener('change', handleResultsChange);
     $('#player-card')?.addEventListener('change', handlePlayerCardFilterChange);
+    $('#placeholder-screen')?.addEventListener('click', handlePlaceholderClick);
+    document.addEventListener('click', handleStatsTutorialClick);
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && state.screen === 'stats') {
@@ -628,10 +668,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    document.addEventListener('click', (event) => {
-      if (event.target.closest('.set-picker')) return;
-      closeSetMenu();
-    });
   }
 
   function submitPin() {
@@ -654,7 +690,103 @@ document.addEventListener('DOMContentLoaded', () => {
     const title = MENU_ITEMS[route] || 'Раздел';
     $('#placeholder-title').textContent = title;
     $('#placeholder-text').textContent = `${title}: скоро будет. Модуль зарезервирован для следующего этапа.`;
+    const actions = $('#placeholder-actions');
+    if (actions) {
+      actions.innerHTML = route === 'help'
+        ? '<button class="primary-action" type="button" data-placeholder-action="start-stats-tutorial">Повторить обучение записи</button>'
+        : '';
+    }
     showScreen('placeholder');
+  }
+
+  function handlePlaceholderClick(event) {
+    const button = event.target.closest('[data-placeholder-action]');
+    if (!button) return;
+    if (button.dataset.placeholderAction === 'start-stats-tutorial') {
+      storage.remove(STORAGE_KEYS.statsTutorialSeen);
+      showScreen('stats');
+      window.setTimeout(() => {
+        if (state.currentMatch) {
+          startStatsTutorial(true);
+        } else {
+          showToast('Создайте матч, затем запустите обучение', 'info');
+        }
+      }, 120);
+    }
+  }
+
+  function maybeStartStatsTutorial() {
+    if (!state.currentMatch || state.screen !== 'stats') return;
+    if (storage.load(STORAGE_KEYS.statsTutorialSeen, false)) return;
+    startStatsTutorial(false);
+  }
+
+  function startStatsTutorial(force = false) {
+    if (!state.currentMatch) return;
+    if (!force && storage.load(STORAGE_KEYS.statsTutorialSeen, false)) return;
+    state.statsTutorialStep = 0;
+    renderStatsTutorialStep();
+  }
+
+  function clearStatsTutorialHighlight() {
+    $$('.tutorial-highlight').forEach((node) => node.classList.remove('tutorial-highlight'));
+  }
+
+  function closeStatsTutorial(saveSeen = true) {
+    clearStatsTutorialHighlight();
+    $('#stats-tutorial-overlay')?.remove();
+    if (saveSeen) storage.save(STORAGE_KEYS.statsTutorialSeen, true);
+  }
+
+  function renderStatsTutorialStep() {
+    if (state.statsTutorialStep >= STATS_TUTORIAL_STEPS.length) {
+      closeStatsTutorial(true);
+      return;
+    }
+
+    clearStatsTutorialHighlight();
+    const step = STATS_TUTORIAL_STEPS[state.statsTutorialStep];
+    const target = step.selector ? $(step.selector) : null;
+    if (target) {
+      target.classList.add('tutorial-highlight');
+      target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    }
+
+    let overlay = $('#stats-tutorial-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'stats-tutorial-overlay';
+      overlay.className = 'stats-tutorial-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      document.body.appendChild(overlay);
+    }
+
+    const isLast = state.statsTutorialStep === STATS_TUTORIAL_STEPS.length - 1;
+    overlay.innerHTML = `
+      <div class="stats-tutorial-card">
+        <span>Шаг ${state.statsTutorialStep + 1} из ${STATS_TUTORIAL_STEPS.length}</span>
+        <h2>${escapeHtml(step.title)}</h2>
+        <p>${escapeHtml(step.text)}</p>
+        <div class="stats-tutorial-actions">
+          <button class="secondary-button" type="button" data-tutorial-action="skip">Пропустить обучение</button>
+          <button class="primary-action" type="button" data-tutorial-action="next">${isLast ? 'Готово' : 'Далее'}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function handleStatsTutorialClick(event) {
+    const button = event.target.closest('[data-tutorial-action]');
+    if (!button) return;
+    if (button.dataset.tutorialAction === 'skip') {
+      closeStatsTutorial(true);
+      return;
+    }
+    if (button.dataset.tutorialAction === 'next') {
+      state.statsTutorialStep += 1;
+      renderStatsTutorialStep();
+    }
   }
 
   function teamLogoMarkup(team = TEAM_DATA, sizeClass = '') {
@@ -1199,6 +1331,7 @@ document.addEventListener('DOMContentLoaded', () => {
       workbench?.classList.remove('hidden');
       renderStatsPanel();
       requestWakeLock();
+      window.setTimeout(() => maybeStartStatsTutorial(), 180);
       return;
     }
 
@@ -1300,6 +1433,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <p class="setup-note">Игроки вне заявки не попадут в запись статистики и результаты этого матча.</p>
       </section>
       <div class="match-setup-actions">
+        <button class="primary-action" type="button" data-setup-action="quick-start-match">Начать быструю запись</button>
         <button class="primary-action" type="button" data-setup-action="start-match">Начать запись</button>
         <button class="secondary-button" type="button" data-setup-action="back-menu">Отмена</button>
       </div>
@@ -1316,6 +1450,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (action === 'start-match') {
       createMatchFromSetup();
+      return;
+    }
+    if (action === 'quick-start-match') {
+      createQuickMatchDraft();
     }
   }
 
@@ -1424,6 +1562,66 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAutosave();
   }
 
+  function createQuickMatchDraft() {
+    const participants = TEAM_DATA.players.slice();
+    if (!participants.length) {
+      showToast('Состав не заполнен', 'warning');
+      return;
+    }
+
+    const starterIds = TEAM_DATA.starterSlots.map((slot) => slot.playerId || slot.id).filter(Boolean);
+    const starters = sortPlayersForLineup(
+      (starterIds.length ? starterIds.map(getPlayer).filter(Boolean) : participants.slice(0, 6))
+    ).slice(0, 7);
+    const lineup = createLineupSlots(starters);
+    const starterIdSet = new Set(starters.map((player) => player.id));
+    const roster = participants.map((player) => getPlayerSnapshot(player, starterIdSet.has(player.id) ? 'старт' : 'запас'));
+    const bench = participants
+      .filter((player) => !starterIdSet.has(player.id))
+      .map((player) => getPlayerSnapshot(player, 'запас'));
+    const now = new Date().toISOString();
+    const id = createId('match');
+
+    state.currentSet = 1;
+    state.statsLineup = lineup;
+    state.currentMatch = {
+      id,
+      matchId: id,
+      teamId: TEAM_DATA.id,
+      teamName: TEAM_DATA.name,
+      ourTeam: TEAM_DATA.name,
+      opponent: 'Соперник не указан',
+      date: getTodayInputDate(),
+      tournament: '',
+      location: '',
+      venue: '',
+      matchType: 'товарищеский',
+      matchFormat: 'до 3 партий',
+      status: 'идёт матч',
+      roster,
+      startingLineup: lineup.filter((slot) => slot.playerId),
+      lineup,
+      bench,
+      substitutions: [],
+      sets: createEmptySets(),
+      setScores: [],
+      finalScore: '',
+      result: '',
+      coachComment: '',
+      currentSet: state.currentSet,
+      setNumber: state.currentSet,
+      title: `${TEAM_DATA.name} — соперник`,
+      createdAt: now,
+      updatedAt: now,
+      events: []
+    };
+
+    saveCurrentMatch();
+    enterStatsScreen();
+    updateAutosave('saved');
+    showToast('Быстрая запись начата', 'success');
+  }
+
   function saveCurrentMatch() {
     if (!state.currentMatch) return false;
 
@@ -1462,43 +1660,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderSetPicker() {
-    const button = $('#stats-set-button');
-    const menu = $('#stats-set-menu');
-    if (!button || !menu) return;
-
-    button.innerHTML = `<span>Партия ${state.currentSet}</span><span aria-hidden="true">▾</span>`;
-    button.setAttribute('aria-label', `Выбор партии: сейчас партия ${state.currentSet}`);
-    menu.innerHTML = [1, 2, 3, 4, 5].map((setNumber) => `
-      <button type="button" role="menuitem" data-set-number="${setNumber}" class="${setNumber === state.currentSet ? 'active' : ''}">
-        ${setNumber}
-      </button>
-    `).join('');
-  }
-
-  function toggleSetMenu() {
-    const menu = $('#stats-set-menu');
-    const button = $('#stats-set-button');
-    if (!menu || !button) return;
-    const isHidden = menu.classList.toggle('hidden');
-    button.setAttribute('aria-expanded', String(!isHidden));
-  }
-
-  function closeSetMenu() {
-    $('#stats-set-menu')?.classList.add('hidden');
-    $('#stats-set-button')?.setAttribute('aria-expanded', 'false');
-  }
-
-  function handleSetMenuClick(event) {
-    const button = event.target.closest('[data-set-number]');
-    if (!button) return;
-    setCurrentSet(button.dataset.setNumber);
-  }
-
   function setCurrentSet(value) {
     const nextSet = normalizeSetNumber(value);
     if (state.currentSet === nextSet) {
-      closeSetMenu();
       return;
     }
 
@@ -1510,7 +1674,6 @@ document.addEventListener('DOMContentLoaded', () => {
       saveCurrentMatch();
     }
 
-    closeSetMenu();
     renderStatsPanel();
     updateAutosave();
   }
@@ -1564,7 +1727,6 @@ document.addEventListener('DOMContentLoaded', () => {
     saveCurrentMatch();
     renderStatsSetTabs();
     renderStatsScorePanel();
-    renderSetPicker();
     const title = $('#stats-set-score');
     if (title) title.textContent = `Партия ${state.currentSet} · ${score.score}`;
     updateAutosave();
@@ -1715,7 +1877,6 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#stats-set-score').textContent = match
       ? `Партия ${state.currentSet} · ${score ? score.score : '0:0'}`
       : `Партия ${state.currentSet}`;
-    renderSetPicker();
     renderStatsSetTabs();
     renderStatsScorePanel();
     renderStatsJournal();
@@ -1853,6 +2014,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const undoButton = $('#undo-last-event-button');
     if (undoButton) undoButton.disabled = false;
     updateAutosave(saved ? 'saved' : 'error');
+    showToast(`${group.name} ${result.label} · ${getShortName(player)}`, 'info', 1200);
 
     if (navigator.vibrate) navigator.vibrate(8);
   }
@@ -1868,7 +2030,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.results.cacheKey = '';
     renderStatsPanel();
     updateAutosave('saved');
-    showToast('Последнее действие отменено', 'info');
+    showToast('Действие отменено', 'info');
   }
 
   function handleStatsSetTabsClick(event) {
@@ -1960,8 +2122,9 @@ document.addEventListener('DOMContentLoaded', () => {
   async function deleteStatsJournalEvent(eventId) {
     const ok = await confirmModal({
       title: 'Удалить действие?',
-      message: 'Статистика матча будет пересчитана.',
+      message: 'Это действие будет удалено из статистики матча. Это нельзя отменить.',
       confirmText: 'Удалить',
+      cancelText: 'Отмена',
       danger: true
     });
     if (!ok) return;

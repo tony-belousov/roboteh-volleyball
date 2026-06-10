@@ -107,6 +107,7 @@
       <section id="team-quick-metrics" class="team-quick-metrics" aria-label="Краткая статистика команды"></section>
 
       <div class="team-actions">
+        <button id="team-start-match" class="primary-action" type="button">Начать запись</button>
         <button id="team-season-stats-toggle" class="secondary-button" type="button">Статистика игроков за сезон</button>
       </div>
 
@@ -156,12 +157,6 @@
           <div class="stats-match-title">
             <strong id="stats-match-name">Сетка</strong>
             <span id="stats-set-score">Партия 1</span>
-          </div>
-          <div class="set-picker">
-            <button class="set-picker-button" id="stats-set-button" type="button" aria-expanded="false">
-              Партия 1 ▾
-            </button>
-            <div id="stats-set-menu" class="set-picker-menu hidden" role="menu"></div>
           </div>
           <div class="stats-top-actions">
             <button class="stats-small-button undo" type="button" id="undo-last-event-button" title="Отменить последнее действие">Отменить</button>
@@ -231,6 +226,7 @@
         <img class="app-logo small" src="setka-icon.svg" alt="" />
         <h2>Скоро будет</h2>
         <p id="placeholder-text">Раздел подготовлен как независимый модуль.</p>
+        <div id="placeholder-actions" class="placeholder-actions"></div>
       </div>
     </section>
   </div>
