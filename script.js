@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.10.1';
+  const APP_VERSION = '2026.06.10.2';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -158,6 +158,10 @@ document.addEventListener('DOMContentLoaded', () => {
     autosaveTimer: null,
     wakeLock: null,
     statsTutorialStep: 0,
+    statsJournalOpen: false,
+    editingStatsEventId: '',
+    pdfPreviewUrl: '',
+    pdfReturnScreen: 'results',
     statsJournalFilters: {
       setNumber: '',
       playerId: '',
@@ -344,6 +348,58 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function makeReportFileName(title = 'Сетка отчёт') {
+    const base = String(title)
+      .replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+    return `${base || 'setka-report'}.html`;
+  }
+
+  function openPdfPreview(report = {}) {
+    const html = String(report.html || '');
+    if (!html) return false;
+
+    if (state.pdfPreviewUrl) {
+      URL.revokeObjectURL(state.pdfPreviewUrl);
+      state.pdfPreviewUrl = '';
+    }
+
+    state.pdfReturnScreen = state.screen && state.screen !== 'pdf-preview'
+      ? state.screen
+      : state.pdfReturnScreen || 'results';
+
+    const title = report.title || 'PDF-отчёт';
+    const fileName = report.filename || makeReportFileName(title);
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    state.pdfPreviewUrl = url;
+
+    $('#pdf-preview-title').textContent = 'PDF-отчёт';
+    $('#pdf-preview-subtitle').textContent = title;
+    const download = $('#pdf-preview-download');
+    if (download) {
+      download.href = url;
+      download.download = fileName;
+    }
+    const frame = $('#pdf-preview-frame');
+    if (frame) frame.src = url;
+
+    showScreen('pdf-preview');
+    return true;
+  }
+
+  function closePdfPreview() {
+    const frame = $('#pdf-preview-frame');
+    if (frame) frame.removeAttribute('src');
+    if (state.pdfPreviewUrl) {
+      URL.revokeObjectURL(state.pdfPreviewUrl);
+      state.pdfPreviewUrl = '';
+    }
+    showScreen(state.pdfReturnScreen || 'results');
+  }
+
+  window.SetkaPdfPreview = { openReport: openPdfPreview };
   window.SetkaShowToast = showToast;
   window.SetkaConfirmModal = confirmModal;
 
@@ -533,6 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (screenName === 'stats') {
       enterStatsScreen();
     } else {
+      closeStatsJournalMode();
       releaseWakeLock();
     }
   }
@@ -652,9 +709,11 @@ document.addEventListener('DOMContentLoaded', () => {
     $('#stats-score-panel')?.addEventListener('click', handleStatsScoreClick);
     $('#stats-live-journal')?.addEventListener('change', handleStatsJournalChange);
     $('#stats-live-journal')?.addEventListener('click', handleStatsJournalClick);
+    $('#stats-live-journal')?.addEventListener('toggle', handleStatsJournalToggle);
     $('#finish-match-save')?.addEventListener('click', saveFinishedMatch);
     $('#finish-match-cancel')?.addEventListener('click', closeFinishMatchModal);
     $('#finish-match-modal')?.addEventListener('click', handleFinishModalClick);
+    $('#pdf-preview-back')?.addEventListener('click', closePdfPreview);
 
     $('#results-content')?.addEventListener('click', handleResultsClick);
     $('#results-content')?.addEventListener('change', handleResultsChange);
@@ -1791,6 +1850,42 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function closeStatsJournalMode() {
+    const details = $('#stats-live-journal');
+    if (details) details.open = false;
+    state.statsJournalOpen = false;
+    state.editingStatsEventId = '';
+    $('.stats-workbench')?.classList.remove('journal-mode');
+    const label = $('.journal-summary-state');
+    if (label) label.textContent = 'Открыть';
+  }
+
+  function applyStatsJournalMode(isOpen) {
+    state.statsJournalOpen = Boolean(isOpen);
+    $('.stats-workbench')?.classList.toggle('journal-mode', state.statsJournalOpen);
+    const label = $('.journal-summary-state');
+    if (label) label.textContent = state.statsJournalOpen ? 'Назад к записи' : 'Открыть';
+    if (!state.statsJournalOpen) state.editingStatsEventId = '';
+  }
+
+  function handleStatsJournalToggle(event) {
+    applyStatsJournalMode(event.currentTarget.open);
+    if (event.currentTarget.open) renderStatsJournal();
+  }
+
+  function getCompactEventPlayerName(event, players = []) {
+    const player = players.find((item) => item.id === event.playerId);
+    if (player) return getShortName(player);
+    const parts = String(event.playerName || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return 'Игрок';
+    return parts[1] ? `${parts[0]} ${parts[1].slice(0, 1)}.` : parts[0];
+  }
+
+  function getCompactActionText(group, result) {
+    if (group.type === 'error') return 'Ошибка';
+    return `${group.name} ${result.label}`;
+  }
+
   function renderStatsJournal() {
     const filtersNode = $('#stats-journal-filters');
     const listNode = $('#stats-journal-list');
@@ -1818,7 +1913,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!events.length) {
       listNode.innerHTML = renderEmptyState({
         title: 'Журнал пуст',
-        text: 'Действия появятся здесь во время записи статистики.',
+        text: 'Запишите первое действие игрока, и оно появится здесь.',
         compact: true
       });
       return;
@@ -1839,16 +1934,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const group = getActionGroup(event.actionType);
     const result = getResultOption(group.type, event.actionResult);
     const time = event.timestamp || event.time
-      ? new Date(event.timestamp || event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      ? new Date(event.timestamp || event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
       : '—';
+    const playerName = getCompactEventPlayerName(event, players);
+    const actionText = getCompactActionText(group, result);
+    const isEditing = state.editingStatsEventId === event.id;
 
     return `
-      <article class="stats-journal-event" data-stats-event-id="${escapeHtml(event.id)}">
+      <article class="stats-journal-event ${isEditing ? 'editing' : ''}" data-stats-event-id="${escapeHtml(event.id)}">
         <div class="stats-journal-event-head">
-          <strong>${escapeHtml(event.playerName || 'Игрок')}</strong>
-          <span>${escapeHtml(time)} · партия ${escapeHtml(event.setNumber || 1)}</span>
+          <strong>Партия ${escapeHtml(event.setNumber || 1)} · ${escapeHtml(playerName)}</strong>
+          <span>${escapeHtml(actionText)} · ${escapeHtml(time)}</span>
         </div>
-        <div class="stats-event-edit">
+        ${isEditing ? `<div class="stats-event-edit">
           <select data-event-field="setNumber" aria-label="Партия события">
             ${[1, 2, 3, 4, 5].map((setNumber) => option(String(setNumber), `Партия ${setNumber}`, String(event.setNumber || 1))).join('')}
           </select>
@@ -1861,9 +1959,11 @@ document.addEventListener('DOMContentLoaded', () => {
           <select data-event-field="actionResult" aria-label="Результат действия">
             ${renderResultOptions(group.type, result.code)}
           </select>
-        </div>
+        </div>` : ''}
         <div class="stats-journal-actions">
-          <button class="secondary-button" type="button" data-stats-journal-action="save-event">Сохранить</button>
+          ${isEditing
+            ? '<button class="secondary-button" type="button" data-stats-journal-action="save-event">Готово</button><button class="text-button" type="button" data-stats-journal-action="cancel-event">Отмена</button>'
+            : '<button class="secondary-button" type="button" data-stats-journal-action="edit-event">Изм.</button>'}
           <button class="text-button danger-outline" type="button" data-stats-journal-action="delete-event">Удалить</button>
         </div>
       </article>
@@ -1880,6 +1980,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStatsSetTabs();
     renderStatsScorePanel();
     renderStatsJournal();
+    applyStatsJournalMode($('#stats-live-journal')?.open);
     const finishButton = $('#finish-match-button');
     const deleteButton = $('#delete-draft-button');
     const undoButton = $('#undo-last-event-button');
@@ -2069,6 +2170,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const eventId = card?.dataset.statsEventId || '';
     if (!eventId) return;
 
+    if (button.dataset.statsJournalAction === 'edit-event') {
+      state.editingStatsEventId = eventId;
+      renderStatsJournal();
+      return;
+    }
+
+    if (button.dataset.statsJournalAction === 'cancel-event') {
+      state.editingStatsEventId = '';
+      renderStatsJournal();
+      return;
+    }
+
     if (button.dataset.statsJournalAction === 'save-event') {
       saveStatsJournalEvent(card, eventId);
       return;
@@ -2114,6 +2227,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveCurrentMatch();
     state.results.cacheKey = '';
+    state.editingStatsEventId = '';
     renderStatsPanel();
     updateAutosave('saved');
     showToast('Действие обновлено', 'success');
@@ -2132,6 +2246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (window.SetkaStorageEvents?.deleteEvent(eventId, TEAM_DATA.id)) {
       saveCurrentMatch();
       state.results.cacheKey = '';
+      state.editingStatsEventId = '';
       renderStatsPanel();
       updateAutosave('saved');
       showToast('Действие удалено');

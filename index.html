@@ -161,7 +161,7 @@
           <div class="stats-top-actions">
             <button class="stats-small-button undo" type="button" id="undo-last-event-button" title="Отменить последнее действие">Отменить</button>
             <button class="stats-small-button" type="button" id="finish-match-button" title="Завершить матч">Завершить</button>
-            <button class="stats-small-button danger" type="button" id="delete-draft-button" title="Удалить черновик">Черновик</button>
+            <button class="stats-small-button danger" type="button" id="delete-draft-button" title="Удалить черновик">Удалить</button>
           </div>
           <div class="autosave-indicator" id="autosave-indicator">Сохранено</div>
         </header>
@@ -173,7 +173,10 @@
           </div>
           <div id="stats-grid" class="stats-grid" role="table" aria-label="Панель записи статистики"></div>
           <details id="stats-live-journal" class="stats-live-journal">
-            <summary>Журнал действий</summary>
+            <summary>
+              <span class="journal-summary-title">Журнал действий</span>
+              <span class="journal-summary-state">Открыть</span>
+            </summary>
             <div class="stats-journal-filters" id="stats-journal-filters"></div>
             <div class="stats-journal-list" id="stats-journal-list"></div>
           </details>
@@ -215,6 +218,18 @@
           <div class="loading-skeleton short"></div>
         </div>
       </div>
+    </section>
+
+    <section id="pdf-preview-screen" class="screen pdf-preview-screen hidden" data-screen="pdf-preview" aria-label="PDF-отчёт">
+      <header class="pdf-preview-header">
+        <button class="back-button" type="button" id="pdf-preview-back">Назад</button>
+        <div>
+          <h1 id="pdf-preview-title">PDF-отчёт</h1>
+          <span id="pdf-preview-subtitle">Предпросмотр отчёта</span>
+        </div>
+        <a id="pdf-preview-download" class="secondary-button pdf-preview-download" href="#" download>Скачать</a>
+      </header>
+      <iframe id="pdf-preview-frame" class="pdf-preview-frame" title="PDF-отчёт"></iframe>
     </section>
 
     <section id="placeholder-screen" class="screen placeholder-screen hidden" data-screen="placeholder" aria-label="Раздел скоро будет">
