@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.12.1';
+  const APP_VERSION = '2026.06.12.2';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -77,6 +77,147 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   ];
   const ACTION_GROUP_BY_TYPE = Object.fromEntries(ACTION_GROUPS.map((group) => [group.type, group]));
+
+  const OFFICIAL_SEASON_DATA = {
+    season: '2024/25',
+    title: 'Сезон',
+    subtitle: 'Итоги выступлений Роботех и Роботех 2.0',
+    teams: {
+      robotech: {
+        highlights: [
+          'Чемпион города',
+          'Финалист области',
+          '11 побед в чемпионате города',
+          '17 очков в чемпионате области'
+        ],
+        teamBlock: [
+          'Чемпион города',
+          'Финалист области',
+          'Город: 1 место · 33 очка',
+          'Область: 2 место основного этапа · 17 очков'
+        ]
+      },
+      robotech_2: {
+        highlights: [
+          '6 место в городе',
+          '6 место в области',
+          '7 побед в чемпионате города',
+          '20 очков в чемпионате города'
+        ],
+        teamBlock: [
+          'Город: 6 место · 20 очков',
+          'Область: 6 место · 6 очков',
+          '7 побед в чемпионате города'
+        ]
+      }
+    },
+    tournaments: [
+      {
+        id: 'rostov-city',
+        title: 'Чемпионат города Ростова-на-Дону',
+        subtitle: 'Мужские команды',
+        type: 'Город',
+        season: '2024/25',
+        activeTeamSummary: {
+          robotech: {
+            title: 'Чемпион города Ростова-на-Дону',
+            line: '11 побед · 33 очка · 1 место'
+          },
+          robotech_2: {
+            title: '6 место в чемпионате города',
+            line: '7 побед · 20 очков'
+          }
+        },
+        standings: [
+          { place: 1, team: 'Роботех', teamId: 'robotech', wins: 11, points: 33, setRatio: '8,25', badge: 'Чемпион города' },
+          { place: 2, team: 'Ростов-Дон', wins: 8, points: 25, setRatio: '2,07' },
+          { place: 3, team: 'Таганрог', wins: 8, points: 23, setRatio: '2,08' },
+          { place: 4, team: 'ПСП', wins: 8, points: 23, setRatio: '1,79' },
+          { place: 5, team: 'Азия', wins: 7, points: 22, setRatio: '1,37' },
+          { place: 6, team: 'Роботех 2.0', teamId: 'robotech_2', wins: 7, points: 20, setRatio: '1,22' },
+          { place: 7, team: 'Бонум', wins: 4, points: 12, setRatio: '0,75' },
+          { place: 8, team: 'СШОР-5', wins: 4, points: 12, setRatio: '0,72' },
+          { place: 9, team: 'Луч Азов', wins: 4, points: 12, setRatio: '0,68' },
+          { place: 10, team: 'ЮФУ-Таганрог', wins: 4, points: 11, setRatio: '0,63' },
+          { place: 11, team: 'Феникс', wins: 1, points: 5, setRatio: '0,35' },
+          { place: 12, team: 'РГУПС', wins: 0, points: 0, setRatio: '0,09' }
+        ]
+      },
+      {
+        id: 'rostov-region',
+        title: 'Чемпионат Ростовской области',
+        subtitle: 'Мужские команды',
+        type: 'Область',
+        season: '2024/25',
+        note: 'Таблица основного этапа. Финальный этап показан отдельно.',
+        activeTeamSummary: {
+          robotech: {
+            title: 'Роботех — финалист области',
+            line: '2 место основного этапа · 6 побед · 17 очков'
+          },
+          robotech_2: {
+            title: '6 место в таблице основного этапа',
+            line: '2 победы · 6 очков'
+          }
+        },
+        standings: [
+          { place: 1, team: 'Таганрог', city: 'Таганрог', wins: 6, points: 18, badge: 'Лидер основного этапа' },
+          { place: 2, team: 'Роботех', city: 'Ростов-на-Дону', teamId: 'robotech', wins: 6, points: 17, badge: 'Финалист области' },
+          { place: 3, team: 'Новочеркасск', city: 'Новочеркасск', wins: 5, points: 15 },
+          { place: 4, team: 'ДГТУ', city: 'Ростов-на-Дону', wins: 4, points: 13 },
+          { place: 5, team: 'Атом', city: 'Волгодонск', wins: 4, points: 12 },
+          { place: 6, team: 'Роботех 2.0', city: 'Ростов-на-Дону', teamId: 'robotech_2', wins: 2, points: 6 },
+          { place: 7, team: 'Ростов-Волей 2', city: 'Ростов-на-Дону', wins: 1, points: 3 },
+          { place: 8, team: 'Сборная РО 2010', city: 'Ростовская область', wins: 0, points: 0 }
+        ],
+        matches: {
+          robotech: [
+            { opponent: 'ДГТУ', score: '3:0', result: 'победа' },
+            { opponent: 'Атом', score: '3:2', result: 'победа' },
+            { opponent: 'Новочеркасск', score: '1:3', result: 'поражение' },
+            { opponent: 'Таганрог', score: '3:0', result: 'победа' },
+            { opponent: 'Роботех 2.0', score: '3:0', result: 'победа' },
+            { opponent: 'Ростов-Волей 2', score: '3:0', result: 'победа' },
+            { opponent: 'Сборная РО 2010', score: '3:0', result: 'победа' }
+          ],
+          robotech_2: [
+            { opponent: 'ДГТУ', score: '1:3', result: 'поражение' },
+            { opponent: 'Роботех', score: '0:3', result: 'поражение' },
+            { opponent: 'Атом', score: '0:3', result: 'поражение' },
+            { opponent: 'Новочеркасск', score: '1:3', result: 'поражение' },
+            { opponent: 'Таганрог', score: '0:3', result: 'поражение' },
+            { opponent: 'Ростов-Волей 2', score: '3:0', result: 'победа' },
+            { opponent: 'Сборная РО 2010', score: '3:0', result: 'победа' }
+          ]
+        },
+        finalFour: {
+          title: 'Финал 4-х',
+          date: '25–26 апреля',
+          tournament: 'Чемпионат Ростовской области среди мужских команд',
+          venue: 'ФОК «Ермак», Баклановский, 81В',
+          badge: 'Финалист области',
+          summary: 'Роботех дошёл до финала чемпионата Ростовской области: обыграл Новочеркасск 3:1 и уступил ДГТУ 1:3.',
+          matches: [
+            { stage: 'Полуфинал', title: 'Роботех — Новочеркасск', score: '3:1', badge: 'Победа' },
+            { stage: 'Финал', title: 'Роботех — ДГТУ', score: '1:3', badge: 'Финал' }
+          ]
+        }
+      }
+    ],
+    comparison: [
+      {
+        title: 'Чемпионат города',
+        robotech: '1 место · 11 побед · 33 очка',
+        robotech_2: '6 место · 7 побед · 20 очков'
+      },
+      {
+        title: 'Чемпионат области',
+        robotech: '2 место основного этапа · 6 побед · 17 очков · Финал 4-х',
+        robotech_2: '6 место · 2 победы · 6 очков'
+      }
+    ],
+    conclusion: 'Роботех выиграл городской чемпионат и дошёл до финала области. Роботех 2.0 завершил оба турнира на 6 месте и показал лучший результат в чемпионате города.'
+  };
 
   const STATS_TUTORIAL_STEPS = [
     {
@@ -203,6 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedPlayerId: '',
       selectedRole: '',
       compareIds: [],
+      selectedSeasonTournamentId: 'rostov-city',
       filters: {
         status: 'all',
         tournament: '',
@@ -722,6 +864,11 @@ document.addEventListener('DOMContentLoaded', () => {
       renderTeamSeasonStats();
     });
     $('#team-start-match')?.addEventListener('click', () => showScreen('stats'));
+    $('#team-season-summary')?.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-team-season-action]');
+      if (!button) return;
+      openResultsSeason();
+    });
 
     $('#pin-submit')?.addEventListener('click', submitPin);
     $('#pin-input')?.addEventListener('keydown', (event) => {
@@ -954,6 +1101,37 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  function getOfficialTeamSeason() {
+    return OFFICIAL_SEASON_DATA.teams[TEAM_DATA.id] || OFFICIAL_SEASON_DATA.teams.robotech;
+  }
+
+  function getOfficialTournament(id) {
+    return OFFICIAL_SEASON_DATA.tournaments.find((item) => item.id === id) || OFFICIAL_SEASON_DATA.tournaments[0];
+  }
+
+  function getOfficialStanding(tournament, teamId = TEAM_DATA.id) {
+    return (tournament?.standings || []).find((item) => item.teamId === teamId) || null;
+  }
+
+  function renderTeamSeasonSummary() {
+    const target = $('#team-season-summary');
+    if (!target) return;
+    const season = getOfficialTeamSeason();
+    target.innerHTML = `
+      <div class="team-season-card">
+        <div>
+          <span class="season-eyebrow">Сезон ${escapeHtml(OFFICIAL_SEASON_DATA.season)}</span>
+          <h2>Сезон</h2>
+          <p>${escapeHtml(season.teamBlock[0] || 'Итоги сезона')}</p>
+        </div>
+        <div class="season-chip-list">
+          ${season.teamBlock.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}
+        </div>
+        <button class="primary-action" type="button" data-team-season-action="open">Смотреть сезон</button>
+      </div>
+    `;
+  }
+
   function renderTeam() {
     const matches = getActiveTeamMatches();
     const metrics = getTeamMetrics(matches);
@@ -968,6 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <span>${metrics.season?.totalActions || 0} действий</span>
     `;
     renderTeamQuickMetrics(metrics);
+    renderTeamSeasonSummary();
 
     const coachesList = $('#coaches-list');
     coachesList.innerHTML = '';
@@ -2686,6 +2865,16 @@ document.addEventListener('DOMContentLoaded', () => {
     renderResults();
   }
 
+  function openResultsSeason(tournamentId = state.results.selectedSeasonTournamentId || 'rostov-city') {
+    state.results.view = 'season';
+    state.results.selectedMatchId = '';
+    state.results.selectedPlayerId = '';
+    state.results.selectedRole = '';
+    state.results.selectedSeasonTournamentId = tournamentId;
+    showScreen('results');
+    renderResults();
+  }
+
   function getResultsData() {
     const matches = window.SetkaStorageMatches ? window.SetkaStorageMatches.getAll(TEAM_DATA) : [];
     const loadInfo = window.SetkaStorageMatches ? window.SetkaStorageMatches.getLoadInfo() : { damaged: 0, usedMock: false };
@@ -2779,6 +2968,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderResultComparison(content);
         return;
       }
+      if (state.results.view === 'season') {
+        renderResultsSeason(content);
+        return;
+      }
       renderResultsHome(content);
     } catch (error) {
       content.innerHTML = renderErrorState({
@@ -2802,6 +2995,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const noRealData = data.loadInfo.usedMock;
     content.innerHTML = `
+      ${renderResultsModeTabs('home')}
       ${noRealData ? renderEmptyState({
         title: 'Матчей пока нет',
         text: 'Создайте первый матч и начните запись статистики.',
@@ -2810,6 +3004,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }) : ''}
       ${noRealData ? renderInfoBanner('Ниже показаны демонстрационные данные, чтобы можно было проверить аналитику.') : ''}
       ${data.loadInfo.damaged ? renderInfoBanner(`Есть повреждённые локальные записи: ${data.loadInfo.damaged}. Они пропущены.`) : ''}
+      ${renderOfficialSeasonTeaser()}
       ${renderResultsFilters(data)}
       ${matches.length ? `
         ${renderSeasonSummary(data.season)}
@@ -2831,6 +3026,236 @@ document.addEventListener('DOMContentLoaded', () => {
           actionText: noRealData ? 'Записать матч' : 'Сбросить фильтры'
         })}
       `}
+    `;
+  }
+
+  function renderResultsModeTabs(active = 'home') {
+    return `
+      <nav class="results-mode-tabs" aria-label="Разделы результатов">
+        <button class="${active === 'home' ? 'active' : ''}" type="button" data-results-action="back-home">Матчи</button>
+        <button class="${active === 'season' ? 'active' : ''}" type="button" data-results-action="open-season">Сезон</button>
+      </nav>
+    `;
+  }
+
+  function renderOfficialSeasonTeaser() {
+    const teamSeason = getOfficialTeamSeason();
+    return `
+      <section class="results-section season-hero">
+        <div class="season-hero-copy">
+          <span class="season-eyebrow">Сезон ${escapeHtml(OFFICIAL_SEASON_DATA.season)}</span>
+          <h2>${escapeHtml(OFFICIAL_SEASON_DATA.title)}</h2>
+          <p>${escapeHtml(OFFICIAL_SEASON_DATA.subtitle)}</p>
+        </div>
+        <div class="season-accent-grid">
+          ${teamSeason.highlights.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}
+        </div>
+        <div class="season-actions">
+          <button class="primary-action" type="button" data-results-action="open-season">Смотреть сезон</button>
+          <button class="secondary-button" type="button" data-results-action="export-season">PDF сезона</button>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderResultsSeason(content) {
+    const selectedTournament = getOfficialTournament(state.results.selectedSeasonTournamentId);
+    const teamSeason = getOfficialTeamSeason();
+    content.innerHTML = `
+      ${renderResultsModeTabs('season')}
+      <section class="results-section season-hero season-hero-full">
+        <div class="season-hero-copy">
+          <span class="season-eyebrow">Сезон ${escapeHtml(OFFICIAL_SEASON_DATA.season)}</span>
+          <h2>Сезон</h2>
+          <p>${escapeHtml(OFFICIAL_SEASON_DATA.subtitle)}</p>
+        </div>
+        <div class="metric-grid">
+          ${teamSeason.highlights.map((item) => metricCard(item, '✓')).join('')}
+        </div>
+        <div class="season-actions">
+          <button class="secondary-button" type="button" data-results-action="export-season">PDF сезона</button>
+        </div>
+      </section>
+      ${renderOfficialTournamentCards()}
+      ${renderOfficialTournamentDetail(selectedTournament)}
+      ${renderOfficialComparisonBlock()}
+    `;
+  }
+
+  function renderOfficialTournamentCards() {
+    return `
+      <section class="results-section">
+        <div class="results-section-head">
+          <h2>Турниры</h2>
+          <span>${OFFICIAL_SEASON_DATA.tournaments.length}</span>
+        </div>
+        <div class="official-tournament-grid">
+          ${OFFICIAL_SEASON_DATA.tournaments.map((tournament) => renderOfficialTournamentCard(tournament)).join('')}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderOfficialTournamentCard(tournament) {
+    const active = state.results.selectedSeasonTournamentId === tournament.id;
+    const summary = tournament.activeTeamSummary?.[TEAM_DATA.id] || {};
+    const robotech = getOfficialStanding(tournament, 'robotech');
+    const robotech2 = getOfficialStanding(tournament, 'robotech_2');
+    return `
+      <article class="official-tournament-card ${active ? 'active' : ''}">
+        <span class="season-eyebrow">${escapeHtml(tournament.type)} · ${escapeHtml(tournament.season)}</span>
+        <h3>${escapeHtml(tournament.title)}</h3>
+        <p>${escapeHtml(summary.title || tournament.subtitle)}</p>
+        <div class="season-chip-list">
+          ${robotech ? `<span>Роботех: ${escapeHtml(robotech.place)} место${tournament.id === 'rostov-region' ? ' основного этапа' : ''}</span>` : ''}
+          ${tournament.id === 'rostov-region' ? '<span>Роботех: Финал 4-х, финалист</span>' : ''}
+          ${robotech2 ? `<span>Роботех 2.0: ${escapeHtml(robotech2.place)} место</span>` : ''}
+        </div>
+        <button class="text-button" type="button" data-results-action="open-season-tournament" data-tournament-id="${escapeHtml(tournament.id)}">Открыть таблицу</button>
+      </article>
+    `;
+  }
+
+  function renderOfficialTournamentDetail(tournament) {
+    if (!tournament) return '';
+    const summary = tournament.activeTeamSummary?.[TEAM_DATA.id] || {};
+    return `
+      <section class="results-section official-tournament-detail">
+        <div class="results-section-head">
+          <div>
+            <h2>${escapeHtml(tournament.title)}</h2>
+            <span>${escapeHtml(tournament.subtitle)} · ${escapeHtml(tournament.season)}</span>
+          </div>
+          <span>${escapeHtml(summary.line || tournament.type)}</span>
+        </div>
+        ${tournament.note ? renderInfoBanner(tournament.note) : ''}
+        <div class="season-team-summary">
+          <strong>${escapeHtml(summary.title || 'Итоги активной команды')}</strong>
+          <span>${escapeHtml(summary.line || 'Данные по команде появятся позже.')}</span>
+        </div>
+        ${renderOfficialStandingCards(tournament)}
+        ${renderOfficialStandingTable(tournament)}
+        ${renderOfficialTournamentMatches(tournament)}
+        ${tournament.finalFour ? renderFinalFourBlock(tournament.finalFour) : ''}
+      </section>
+    `;
+  }
+
+  function officialTeamTone(row) {
+    if (row.teamId === TEAM_DATA.id) return 'active-team';
+    if (row.teamId === 'robotech' || row.teamId === 'robotech_2') return 'tracked-team';
+    return '';
+  }
+
+  function renderOfficialStandingCards(tournament) {
+    return `
+      <div class="official-standing-cards">
+        ${tournament.standings.map((row) => `
+          <article class="official-standing-card ${officialTeamTone(row)}">
+            <span class="official-place">${escapeHtml(row.place)}</span>
+            <div>
+              <strong>${escapeHtml(row.team)}</strong>
+              <small>${escapeHtml(row.city || tournament.type)}</small>
+            </div>
+            <div class="official-card-metrics">
+              <span>${escapeHtml(row.wins)} побед</span>
+              <span>${escapeHtml(row.points)} очков</span>
+              ${row.setRatio ? `<span>СП ${escapeHtml(row.setRatio)}</span>` : ''}
+            </div>
+            ${row.badge ? `<em>${escapeHtml(row.badge)}</em>` : ''}
+          </article>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function renderOfficialStandingTable(tournament) {
+    return `
+      <div class="table-scroll official-standing-table">
+        <table class="stats-table">
+          <thead>
+            <tr><th>Место</th><th>Команда</th><th>Город</th><th>Победы</th><th>Очки</th><th>СП</th><th>Статус</th></tr>
+          </thead>
+          <tbody>
+            ${tournament.standings.map((row) => `
+              <tr class="${officialTeamTone(row)}">
+                <td data-label="Место">${escapeHtml(row.place)}</td>
+                <td data-label="Команда">${escapeHtml(row.team)}</td>
+                <td data-label="Город">${escapeHtml(row.city || '—')}</td>
+                <td data-label="Победы">${escapeHtml(row.wins)}</td>
+                <td data-label="Очки">${escapeHtml(row.points)}</td>
+                <td data-label="СП">${escapeHtml(row.setRatio || '—')}</td>
+                <td data-label="Статус">${escapeHtml(row.badge || '')}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderOfficialTournamentMatches(tournament) {
+    const matches = tournament.matches?.[TEAM_DATA.id] || [];
+    if (!matches.length) return '';
+    return `
+      <div class="official-match-list">
+        <h3>Матчи ${escapeHtml(TEAM_DATA.name)}</h3>
+        <div class="official-match-grid">
+          ${matches.map((match) => `
+            <article class="official-match-card">
+              <strong>${escapeHtml(TEAM_DATA.name)} — ${escapeHtml(match.opponent)}</strong>
+              <span>${escapeHtml(match.score)}</span>
+              <em class="${match.result === 'победа' ? 'success' : 'danger'}">${escapeHtml(match.result)}</em>
+            </article>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderFinalFourBlock(finalFour) {
+    return `
+      <section class="final-four-block">
+        <div class="results-section-head">
+          <div>
+            <h2>${escapeHtml(finalFour.title)}</h2>
+            <span>${escapeHtml(finalFour.date)} · ФОК «Ермак»</span>
+          </div>
+          <span class="season-badge">${escapeHtml(finalFour.badge)}</span>
+        </div>
+        <div class="final-four-grid">
+          ${finalFour.matches.map((match) => `
+            <article class="final-four-card">
+              <span>${escapeHtml(match.stage)}</span>
+              <strong>${escapeHtml(match.title)}</strong>
+              <b>${escapeHtml(match.score)}</b>
+              <em>${escapeHtml(match.badge)}</em>
+            </article>
+          `).join('')}
+        </div>
+        <p>${escapeHtml(finalFour.summary)}</p>
+      </section>
+    `;
+  }
+
+  function renderOfficialComparisonBlock() {
+    return `
+      <section class="results-section">
+        <div class="results-section-head">
+          <h2>Сравнение команд</h2>
+          <span>${escapeHtml(OFFICIAL_SEASON_DATA.season)}</span>
+        </div>
+        <div class="official-comparison-grid">
+          ${OFFICIAL_SEASON_DATA.comparison.map((item) => `
+            <article class="official-comparison-card">
+              <strong>${escapeHtml(item.title)}</strong>
+              <span>Роботех: ${escapeHtml(item.robotech)}</span>
+              <span>Роботех 2.0: ${escapeHtml(item.robotech_2)}</span>
+            </article>
+          `).join('')}
+        </div>
+        <p class="muted">${escapeHtml(OFFICIAL_SEASON_DATA.conclusion)}</p>
+      </section>
     `;
   }
 
@@ -3570,6 +3995,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (action === 'open-season') {
+      openResultsSeason();
+      return;
+    }
+
+    if (action === 'open-season-tournament') {
+      state.results.selectedSeasonTournamentId = button.dataset.tournamentId || 'rostov-city';
+      state.results.view = 'season';
+      renderResults();
+      return;
+    }
+
     if (action === 'back-match') {
       state.results.view = 'match';
       renderResults();
@@ -3624,6 +4061,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (action === 'export-team') {
       const data = getResultsData();
       executePdfExport(() => window.SetkaPdfExport.exportTeamPdf(data.filteredMatches, 'Выбранный период'));
+      return;
+    }
+
+    if (action === 'export-season') {
+      executePdfExport(() => window.SetkaPdfExport.exportSeasonPdf(OFFICIAL_SEASON_DATA, TEAM_DATA.id, TEAM_DATA.name));
       return;
     }
 

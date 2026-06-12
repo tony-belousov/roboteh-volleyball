@@ -193,10 +193,46 @@
     return openPrintable('Сетка · сравнение матчей', sections);
   }
 
+  function exportSeasonPdf(seasonData, teamId, teamName) {
+    if (!seasonData?.tournaments?.length) return false;
+    const teamSeason = seasonData.teams?.[teamId] || {};
+    const standingsTable = (tournament) => `
+      <h2>${escapeHtml(tournament.title)}</h2>
+      <p>${escapeHtml(tournament.subtitle || '')} · сезон ${escapeHtml(tournament.season || seasonData.season || '')}</p>
+      ${tournament.note ? `<p>${escapeHtml(tournament.note)}</p>` : ''}
+      <table>
+        <thead><tr><th>Место</th><th>Команда</th><th>Город</th><th>Победы</th><th>Очки</th><th>СП</th><th>Статус</th></tr></thead>
+        <tbody>${(tournament.standings || []).map((rowItem) => `<tr>
+          <td>${escapeHtml(rowItem.place)}</td>
+          <td>${escapeHtml(rowItem.team)}</td>
+          <td>${escapeHtml(rowItem.city || '')}</td>
+          <td>${escapeHtml(rowItem.wins)}</td>
+          <td>${escapeHtml(rowItem.points)}</td>
+          <td>${escapeHtml(rowItem.setRatio || '')}</td>
+          <td>${escapeHtml(rowItem.badge || '')}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    `;
+    const finalFour = seasonData.tournaments.find((item) => item.finalFour)?.finalFour;
+    const comparisonRows = (seasonData.comparison || []).map((item) => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.robotech)}</td><td>${escapeHtml(item.robotech_2)}</td></tr>`).join('');
+    const sections = [
+      `<h2>Команда</h2><table><tbody>
+        ${row('Активная команда', teamName)}
+        ${row('Сезон', seasonData.season)}
+        ${row('Ключевые итоги', (teamSeason.highlights || []).join(', '))}
+      </tbody></table>`,
+      ...seasonData.tournaments.map(standingsTable),
+      finalFour ? `<h2>${escapeHtml(finalFour.title)}</h2><p>${escapeHtml(finalFour.date)} · ${escapeHtml(finalFour.venue)}</p><table><thead><tr><th>Этап</th><th>Матч</th><th>Счёт</th><th>Статус</th></tr></thead><tbody>${finalFour.matches.map((match) => `<tr><td>${escapeHtml(match.stage)}</td><td>${escapeHtml(match.title)}</td><td>${escapeHtml(match.score)}</td><td>${escapeHtml(match.badge)}</td></tr>`).join('')}</tbody></table><p>${escapeHtml(finalFour.summary)}</p>` : '',
+      `<h2>Сравнение команд</h2><table><thead><tr><th>Турнир</th><th>Роботех</th><th>Роботех 2.0</th></tr></thead><tbody>${comparisonRows}</tbody></table><p>${escapeHtml(seasonData.conclusion || '')}</p>`
+    ];
+    return openPrintable(`Сетка · сезон ${teamName}`, sections);
+  }
+
   window.SetkaPdfExport = {
     exportMatchPdf,
     exportTeamPdf,
     exportPlayerPdf,
-    exportComparePdf
+    exportComparePdf,
+    exportSeasonPdf
   };
 })();
