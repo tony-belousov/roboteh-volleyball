@@ -153,26 +153,26 @@
 
       <div class="stats-workbench">
         <header class="stats-topbar">
-          <button class="stats-menu-button" type="button" data-back>Меню</button>
-          <div class="stats-match-title">
+          <button class="stats-menu-button" type="button" data-back data-tutorial="menu">Меню</button>
+          <div class="stats-match-title" data-tutorial="match-info">
             <strong id="stats-match-name">Сетка</strong>
             <span id="stats-set-score">Партия 1</span>
           </div>
           <div class="stats-top-actions">
-            <button class="stats-small-button undo" type="button" id="undo-last-event-button" title="Отменить последнее действие">Отменить</button>
-            <button class="stats-small-button stats-journal-top-button" type="button" id="stats-journal-top-button" title="Открыть журнал действий">Журнал</button>
-            <button class="stats-small-button" type="button" id="finish-match-button" title="Завершить матч">Завершить</button>
+            <button class="stats-small-button undo" type="button" id="undo-last-event-button" title="Отменить последнее действие" data-tutorial="undo">Отменить</button>
+            <button class="stats-small-button stats-journal-top-button" type="button" id="stats-journal-top-button" title="Открыть журнал действий" data-tutorial="journal">Журнал</button>
+            <button class="stats-small-button" type="button" id="finish-match-button" title="Завершить матч" data-tutorial="finish">Завершить</button>
             <button class="stats-small-button danger" type="button" id="delete-draft-button" title="Удалить черновик">Удалить</button>
           </div>
-          <div class="autosave-indicator" id="autosave-indicator">Сохранено</div>
+          <div class="autosave-indicator" id="autosave-indicator" data-tutorial="save-status">Сохранено</div>
         </header>
 
         <div class="stats-grid-shell">
           <div class="stats-control-strip">
-            <div id="stats-set-tabs" class="stats-set-tabs" aria-label="Быстрый выбор партии"></div>
+            <div id="stats-set-tabs" class="stats-set-tabs" aria-label="Быстрый выбор партии" data-tutorial="set-selector"></div>
             <div id="stats-score-panel" class="stats-score-panel" aria-label="Счёт текущей партии"></div>
           </div>
-          <div id="stats-grid" class="stats-grid" role="table" aria-label="Панель записи статистики"></div>
+          <div id="stats-grid" class="stats-grid" role="table" aria-label="Панель записи статистики" data-tutorial="players"></div>
           <details id="stats-live-journal" class="stats-live-journal">
             <summary>
               <span class="journal-summary-title">Журнал действий</span>

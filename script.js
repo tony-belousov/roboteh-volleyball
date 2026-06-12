@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.10.6';
+  const APP_VERSION = '2026.06.12.1';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -80,39 +80,69 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const STATS_TUTORIAL_STEPS = [
     {
-      selector: '#stats-set-tabs',
-      title: 'Выберите партию',
-      text: 'Здесь выбирается текущая партия. Все новые действия будут записаны именно в неё.'
+      selector: '[data-tutorial="menu"]',
+      title: 'Меню',
+      text: 'Здесь можно вернуться в меню и перейти в другие разделы приложения.'
     },
     {
-      selector: '#stats-score-panel .score-box',
-      title: 'Следите за счётом',
-      text: 'Счёт выбранной партии всегда виден рядом с рабочими кнопками.'
+      selector: '[data-tutorial="match-info"]',
+      title: 'Матч и партия',
+      text: 'Здесь показаны соперник, текущая партия и счёт матча.'
     },
     {
-      selector: '#stats-score-panel .score-controls',
-      title: 'Добавляйте очки',
-      text: 'Крупные кнопки быстро меняют счёт вашей команды и соперника.'
+      selector: '[data-tutorial="set-selector"]',
+      title: 'Выбор партии',
+      text: 'Выберите партию, в которую записываете действия. Каждое событие сохранится в выбранную партию.'
     },
     {
-      selector: '.stats-row:not(.stats-header-row)',
-      title: 'Записывайте действия игрока',
-      text: 'В карточке игрока выбирайте подачу, приём, атаку, блок, защиту или ошибку.'
+      selector: '[data-tutorial="score"]',
+      title: 'Счёт',
+      text: 'Здесь отображается счёт текущей партии. Используйте кнопки рядом, чтобы быстро изменить счёт.'
     },
     {
-      selector: '#undo-last-event-button',
-      title: 'Отменяйте последнее действие',
-      text: 'Если ошиблись во время матча, можно быстро отменить последнее записанное действие.'
+      selector: '[data-tutorial="score-controls"]',
+      title: 'Очки команды',
+      text: 'Кнопка с буквой команды добавляет очко вашей команде, кнопка “С” — сопернику, а “−” уменьшает соответствующий счёт.'
     },
     {
-      selector: '#stats-live-journal summary',
-      title: 'Открывайте журнал',
-      text: 'В журнале можно посмотреть, изменить или удалить записанные события.'
+      selector: '[data-tutorial="players"]',
+      title: 'Игроки',
+      text: 'В этой зоне находятся игроки активной команды. Нажимайте действия напротив нужного игрока.'
+    },
+    {
+      selector: '[data-tutorial="action-buttons"]',
+      title: 'Действия',
+      text: 'Для каждого игрока можно записать подачу, приём, атаку, блок, защиту или ошибку.'
+    },
+    {
+      selector: '.stat-button',
+      title: 'Оценка действия',
+      text: 'Кнопки “+”, “−” и “/” обозначают результат действия. “+” — удачно, “−” — ошибка, “/” — нейтрально или средне.'
+    },
+    {
+      selector: '[data-tutorial="undo"]',
+      title: 'Отменить',
+      text: 'Если ошиблись, нажмите “Отменить”, чтобы убрать последнее действие.'
+    },
+    {
+      selector: '[data-tutorial="journal"], #stats-live-journal summary',
+      title: 'Журнал',
+      text: 'В журнале можно посмотреть все записанные действия, отфильтровать их, изменить или удалить. Журнал прокручивается внутри своего окна.'
+    },
+    {
+      selector: '[data-tutorial="finish"]',
+      title: 'Завершить',
+      text: 'Когда матч закончен, нажмите “Завершить”, чтобы перейти к результатам и аналитике.'
+    },
+    {
+      selector: '[data-tutorial="save-status"]',
+      title: 'Сохранение',
+      text: 'Приложение сохраняет изменения автоматически. Статус сохранения отображается в верхней панели.'
     },
     {
       selector: '',
       title: 'Готово',
-      text: 'Можно начинать запись статистики матча.'
+      text: 'Теперь можно записывать статистику матча. Обучение можно пройти повторно в справке или через кнопку обучения.'
     }
   ];
 
@@ -760,7 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const actions = $('#placeholder-actions');
     if (actions) {
       actions.innerHTML = route === 'help'
-        ? '<button class="primary-action" type="button" data-placeholder-action="start-stats-tutorial">Повторить обучение записи</button>'
+        ? '<button class="primary-action" type="button" data-placeholder-action="start-stats-tutorial">Пройти обучение записи статистики</button>'
         : '';
     }
     showScreen('placeholder');
@@ -770,7 +800,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const button = event.target.closest('[data-placeholder-action]');
     if (!button) return;
     if (button.dataset.placeholderAction === 'start-stats-tutorial') {
-      storage.remove(STORAGE_KEYS.statsTutorialSeen);
       showScreen('stats');
       window.setTimeout(() => {
         if (state.currentMatch) {
@@ -791,12 +820,29 @@ document.addEventListener('DOMContentLoaded', () => {
   function startStatsTutorial(force = false) {
     if (!state.currentMatch) return;
     if (!force && storage.load(STORAGE_KEYS.statsTutorialSeen, false)) return;
+    closeStatsJournalMode();
+    renderStatsPanel();
     state.statsTutorialStep = 0;
     renderStatsTutorialStep();
   }
 
   function clearStatsTutorialHighlight() {
     $$('.tutorial-highlight').forEach((node) => node.classList.remove('tutorial-highlight'));
+  }
+
+  function isTutorialTargetVisible(node) {
+    if (!node) return false;
+    const style = window.getComputedStyle(node);
+    return style.display !== 'none'
+      && style.visibility !== 'hidden'
+      && style.opacity !== '0'
+      && node.getClientRects().length > 0;
+  }
+
+  function getStatsTutorialTarget(selector) {
+    if (!selector) return null;
+    const candidates = $$(selector);
+    return candidates.find(isTutorialTargetVisible) || candidates[0] || null;
   }
 
   function closeStatsTutorial(saveSeen = true) {
@@ -813,10 +859,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearStatsTutorialHighlight();
     const step = STATS_TUTORIAL_STEPS[state.statsTutorialStep];
-    const target = step.selector ? $(step.selector) : null;
+    const target = getStatsTutorialTarget(step.selector);
     if (target) {
       target.classList.add('tutorial-highlight');
       target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+    } else if (step.selector) {
+      console.warn('Не найдена зона обучения', step.selector);
     }
 
     let overlay = $('#stats-tutorial-overlay');
@@ -837,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <p>${escapeHtml(step.text)}</p>
         <div class="stats-tutorial-actions">
           <button class="secondary-button" type="button" data-tutorial-action="skip">Пропустить обучение</button>
-          <button class="primary-action" type="button" data-tutorial-action="next">${isLast ? 'Готово' : 'Далее'}</button>
+          <button class="primary-action" type="button" data-tutorial-action="next">${isLast ? 'Начать запись' : 'Далее'}</button>
         </div>
       </div>
     `;
@@ -1767,11 +1815,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!panel) return;
     const score = getSetScore();
     panel.innerHTML = `
-      <div class="score-box">
+      <div class="score-box" data-tutorial="score">
         <span>Партия ${escapeHtml(state.currentSet)}</span>
         <strong>${escapeHtml(score.ourScore)}:${escapeHtml(score.opponentScore)}</strong>
       </div>
-      <div class="score-controls" aria-label="Изменить счёт партии ${escapeHtml(state.currentSet)}">
+      <div class="score-controls" aria-label="Изменить счёт партии ${escapeHtml(state.currentSet)}" data-tutorial="score-controls">
         <button type="button" data-score-action="our-minus" aria-label="Уменьшить наш счёт">−</button>
         <button type="button" data-score-action="our-plus" aria-label="Добавить очко ${escapeHtml(TEAM_DATA.name)}">${escapeHtml(TEAM_DATA.logoText || 'М')}</button>
         <button type="button" data-score-action="opponent-plus" aria-label="Добавить очко сопернику">С</button>
@@ -2110,6 +2158,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const cell = document.createElement('div');
       cell.className = `stats-cell stats-action-cell result-count-${group.results.length}`;
       cell.setAttribute('role', 'cell');
+      cell.dataset.tutorial = 'action-buttons';
       cell.dataset.actionLabel = group.name;
 
       group.results.forEach((result) => {
