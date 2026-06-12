@@ -174,7 +174,7 @@
         ${row('Команда', matches?.[0]?.ourTeam || player.teamName || '')}
         ${row('Амплуа', player.role)}
         ${row('Номер', player.number)}
-        ${row('Рост', player.height ? `${player.height} см` : 'не указан')}
+        ${row('Рост', player.height ? `${player.height} см` : 'уточняется')}
         ${row('Дата рождения', player.birthDate || 'не указана')}
         ${row('Действий', player.totalActions)}
         ${row('Ошибки', player.errors)}
@@ -216,16 +216,18 @@
     const finalFour = seasonData.tournaments.find((item) => item.finalFour)?.finalFour;
     const comparisonRows = (seasonData.comparison || []).map((item) => `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.robotech)}</td><td>${escapeHtml(item.robotech_2)}</td></tr>`).join('');
     const sections = [
+      `<h2>Сезон ${escapeHtml(seasonData.season || '')}</h2><p>Официальные итоги выступления команды.</p>`,
       `<h2>Команда</h2><table><tbody>
         ${row('Активная команда', teamName)}
         ${row('Сезон', seasonData.season)}
         ${row('Ключевые итоги', (teamSeason.highlights || []).join(', '))}
+        ${row('Вывод', teamSeason.description || seasonData.conclusion || '')}
       </tbody></table>`,
       ...seasonData.tournaments.map(standingsTable),
       finalFour ? `<h2>${escapeHtml(finalFour.title)}</h2><p>${escapeHtml(finalFour.date)} · ${escapeHtml(finalFour.venue)}</p><table><thead><tr><th>Этап</th><th>Матч</th><th>Счёт</th><th>Статус</th></tr></thead><tbody>${finalFour.matches.map((match) => `<tr><td>${escapeHtml(match.stage)}</td><td>${escapeHtml(match.title)}</td><td>${escapeHtml(match.score)}</td><td>${escapeHtml(match.badge)}</td></tr>`).join('')}</tbody></table><p>${escapeHtml(finalFour.summary)}</p>` : '',
       `<h2>Сравнение команд</h2><table><thead><tr><th>Турнир</th><th>Роботех</th><th>Роботех 2.0</th></tr></thead><tbody>${comparisonRows}</tbody></table><p>${escapeHtml(seasonData.conclusion || '')}</p>`
     ];
-    return openPrintable(`Сетка · сезон ${teamName}`, sections);
+    return openPrintable(`Сетка · сезон ${seasonData.season || ''} · ${teamName}`, sections);
   }
 
   window.SetkaPdfExport = {

@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.12.2';
+  const APP_VERSION = '2026.06.12.3';
   const APP_NAME = 'Сетка';
 
   const STORAGE_KEYS = {
@@ -79,11 +79,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const ACTION_GROUP_BY_TYPE = Object.fromEntries(ACTION_GROUPS.map((group) => [group.type, group]));
 
   const OFFICIAL_SEASON_DATA = {
-    season: '2024/25',
-    title: 'Сезон',
-    subtitle: 'Итоги выступлений Роботех и Роботех 2.0',
+    season: '2025/2026',
+    title: 'Сезон 2025/2026',
+    subtitle: 'Официальные итоги выступлений Роботех и Роботех 2.0',
+    reportHint: 'Готово для отчёта команде и тренеру',
     teams: {
       robotech: {
+        description: 'Роботех выиграл чемпионат города Ростова-на-Дону и дошёл до финала чемпионата Ростовской области.',
         highlights: [
           'Чемпион города',
           'Финалист области',
@@ -98,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ]
       },
       robotech_2: {
+        description: 'Роботех 2.0 завершил оба турнира на 6 месте и сильнее выступил в чемпионате города.',
         highlights: [
           '6 место в городе',
           '6 место в области',
@@ -117,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: 'Чемпионат города Ростова-на-Дону',
         subtitle: 'Мужские команды',
         type: 'Город',
-        season: '2024/25',
+        season: '2025/2026',
         activeTeamSummary: {
           robotech: {
             title: 'Чемпион города Ростова-на-Дону',
@@ -148,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
         title: 'Чемпионат Ростовской области',
         subtitle: 'Мужские команды',
         type: 'Область',
-        season: '2024/25',
+        season: '2025/2026',
         note: 'Таблица основного этапа. Финальный этап показан отдельно.',
         activeTeamSummary: {
           robotech: {
@@ -1124,6 +1127,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <h2>Сезон</h2>
           <p>${escapeHtml(season.teamBlock[0] || 'Итоги сезона')}</p>
         </div>
+        <span class="season-report-note">Официальные итоги сезона</span>
         <div class="season-chip-list">
           ${season.teamBlock.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}
         </div>
@@ -1191,7 +1195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <span class="player-number">№${player.number}</span>
         <span class="player-main">
           <strong>${escapeHtml(getPlayerDisplayName(player))}</strong>
-          <small>${escapeHtml(formatDate(player.birthDate))} · ${escapeHtml(player.role)} · ${player.height ? `${player.height} см` : 'рост не указан'}</small>
+          <small>${escapeHtml(formatDate(player.birthDate))} · ${escapeHtml(player.role)} · ${player.height ? `${player.height} см` : 'рост уточняется'}</small>
           <small>${escapeHtml(seasonLine)}</small>
         </span>
         <span class="player-status">${escapeHtml(player.status || 'не указан')}</span>
@@ -1314,7 +1318,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
       <dl class="player-facts">
         <div><dt>Команда</dt><dd>${escapeHtml(TEAM_DATA.name)}</dd></div>
-        <div><dt>Рост</dt><dd>${player.height ? `${player.height} см` : 'не указан'}</dd></div>
+        <div><dt>Рост</dt><dd>${player.height ? `${player.height} см` : 'уточняется'}</dd></div>
         <div><dt>Дата рождения</dt><dd>${escapeHtml(formatDate(player.birthDate))}</dd></div>
         <div><dt>Амплуа</dt><dd>${escapeHtml(player.role)}</dd></div>
       </dl>
@@ -3045,7 +3049,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="season-hero-copy">
           <span class="season-eyebrow">Сезон ${escapeHtml(OFFICIAL_SEASON_DATA.season)}</span>
           <h2>${escapeHtml(OFFICIAL_SEASON_DATA.title)}</h2>
-          <p>${escapeHtml(OFFICIAL_SEASON_DATA.subtitle)}</p>
+          <p>${escapeHtml(teamSeason.description || OFFICIAL_SEASON_DATA.subtitle)}</p>
+          <span class="season-report-note">${escapeHtml(OFFICIAL_SEASON_DATA.reportHint)}</span>
         </div>
         <div class="season-accent-grid">
           ${teamSeason.highlights.map((item) => `<span>${escapeHtml(item)}</span>`).join('')}
@@ -3066,14 +3071,16 @@ document.addEventListener('DOMContentLoaded', () => {
       <section class="results-section season-hero season-hero-full">
         <div class="season-hero-copy">
           <span class="season-eyebrow">Сезон ${escapeHtml(OFFICIAL_SEASON_DATA.season)}</span>
-          <h2>Сезон</h2>
-          <p>${escapeHtml(OFFICIAL_SEASON_DATA.subtitle)}</p>
+          <h2>${escapeHtml(OFFICIAL_SEASON_DATA.title)}</h2>
+          <p>${escapeHtml(teamSeason.description || OFFICIAL_SEASON_DATA.subtitle)}</p>
+          <span class="season-report-note">${escapeHtml(OFFICIAL_SEASON_DATA.reportHint)}</span>
         </div>
         <div class="metric-grid">
           ${teamSeason.highlights.map((item) => metricCard(item, '✓')).join('')}
         </div>
         <div class="season-actions">
           <button class="secondary-button" type="button" data-results-action="export-season">PDF сезона</button>
+          <p class="season-action-note">Сформируйте сезонный отчёт для команды, тренера или руководства.</p>
         </div>
       </section>
       ${renderOfficialTournamentCards()}

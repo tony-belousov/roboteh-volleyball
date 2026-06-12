@@ -1035,6 +1035,7 @@ img.avatar {
 .finish-match-form label {
   display: grid;
   gap: 6px;
+  min-width: 0;
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
@@ -1046,13 +1047,33 @@ img.avatar {
 .finish-match-form input,
 .finish-match-form select,
 .finish-match-form textarea {
+  display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 46px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 11px;
   background: #071310;
   color: var(--text);
+}
+
+.match-form-grid input[type="date"],
+.finish-match-form input[type="date"] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.2;
+}
+
+.match-form-grid input[type="date"]::-webkit-date-and-time-value,
+.finish-match-form input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.2em;
+  text-align: left;
 }
 
 .match-form-grid textarea,
@@ -3123,6 +3144,19 @@ details.results-section summary {
   color: var(--muted);
 }
 
+.season-report-note {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 8px;
+  border: 1px solid rgba(41, 211, 145, 0.24);
+  border-radius: 999px;
+  background: rgba(41, 211, 145, 0.09);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .season-accent-grid,
 .official-tournament-grid,
 .official-standing-cards,
@@ -3150,11 +3184,20 @@ details.results-section summary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
 }
 
 .season-actions .primary-action,
 .season-actions .secondary-button {
   min-height: 44px;
+}
+
+.season-action-note {
+  flex: 1 1 220px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .official-tournament-card,
