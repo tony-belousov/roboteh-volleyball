@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026.06.13.2';
+const CACHE_VERSION = '2026.06.13.8';
 const APP_SHELL_CACHE = `setka-app-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `setka-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `setka-images-${CACHE_VERSION}`;
@@ -14,12 +14,20 @@ const CORE_ASSETS = [
   './setka-icon.svg',
   './setka-icon-192.png',
   './setka-icon-512.png',
-  './assets/teams/robotech-logo.jpg',
-  './assets/teams/robotech-2-logo.jpg',
+  './assets/teams/robotech-logo.png',
+  './assets/teams/robotech-2-logo.png',
   './assets/placeholders/robotech-default.png',
   './assets/placeholders/robotech2-default.png',
+  './assets/legacy-matches/robotech-dgtu-city.jpg',
+  './assets/legacy-matches/robotech-2025-10-06.jpg',
+  './assets/legacy-matches/robotech-2-atom-region.jpg',
+  './assets/legacy-matches/robotech-2-rgups-2025-10-01.jpg',
+  './assets/legacy-matches/robotech-2-2026-02-03.jpg',
+  './assets/legacy-matches/robotech-2-2025-10-06-unverified.jpg',
+  './assets/legacy-matches/robotech-2025-12-20.jpg',
   './storage/teams.js',
   './storage/events.js',
+  './storage/importedMatches.js',
   './storage/matches.js',
   './stats/calculateTeamStats.js',
   './stats/calculatePlayerStats.js',

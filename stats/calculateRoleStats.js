@@ -1,5 +1,5 @@
 (function () {
-  const ROLE_ORDER = ['диагональный', 'доигровщик', 'центральный', 'связующий', 'либеро'];
+  const ROLE_ORDER = ['диагональный', 'доигровщик', 'центральный', 'связующий', 'либеро', 'блокирующий'];
 
   function getPlayerDisplayName(player) {
     if (window.SetkaPlayerNames) return window.SetkaPlayerNames.getPlayerDisplayName(player);
@@ -10,55 +10,68 @@
     return parts.slice(0, 2).join(' ') || String(value || '').trim();
   }
 
+  function roleName(value) {
+    return value || 'Амплуа не указано';
+  }
+
+  function ensureRole(roles, role) {
+    const key = roleName(role);
+    if (!roles.has(key)) {
+      roles.set(key, {
+        role: key,
+        players: new Map(),
+        totalActions: 0,
+        contributionPercent: 0,
+        byAction: {},
+        teamStats: null
+      });
+    }
+    return roles.get(key);
+  }
+
   function calculateRoleStats(matchOrMatches, teamId = '') {
     const matches = (Array.isArray(matchOrMatches) ? matchOrMatches : [matchOrMatches].filter(Boolean))
       .filter((match) => !teamId || !match.teamId || match.teamId === teamId);
     const roles = new Map();
-    const allEvents = matches.flatMap((match) => match.events || []).filter((event) => !teamId || !event.teamId || event.teamId === teamId);
-    const totalActions = allEvents.length || 0;
+    const totalStats = window.SetkaStatsCore.mergeTeamStats(matches.map((match) => window.SetkaStatsCore.calculateMatchStats(match, teamId)));
+    const totalActions = totalStats.totalActions || 0;
 
     matches.forEach((match) => {
       (match.roster || []).forEach((player) => {
-        const role = player.role || 'Амплуа не указано';
-        if (!roles.has(role)) {
-          roles.set(role, {
-            role,
-            players: new Map(),
-            totalActions: 0,
-            contributionPercent: 0,
-            byAction: {}
-          });
-        }
-        roles.get(role).players.set(player.playerId || player.id, getPlayerDisplayName(player));
+        const item = ensureRole(roles, player.role);
+        item.players.set(player.playerId || player.id, getPlayerDisplayName(player));
       });
-    });
 
-    allEvents.forEach((event) => {
-      const role = event.playerRole || 'Амплуа не указано';
-      if (!roles.has(role)) {
-        roles.set(role, {
-          role,
-          players: new Map(),
-          totalActions: 0,
-          contributionPercent: 0,
-          byAction: {}
-        });
+      (match.events || []).forEach((event) => {
+        if (teamId && event.teamId && event.teamId !== teamId) return;
+        ensureRole(roles, event.playerRole);
+      });
+
+      if (match.importedStats) {
+        window.SetkaStatsCore.getImportedCalculationRows(match.importedStats, {
+          teamId: match.teamId || teamId,
+          matchId: match.id || match.matchId || ''
+        }).forEach((row) => ensureRole(roles, row.playerRole).players.set(row.playerId, getPlayerDisplayName(row.playerName)));
       }
     });
 
     roles.forEach((item) => {
-      const events = allEvents.filter((event) => (event.playerRole || 'Амплуа не указано') === item.role);
-      item.totalActions = events.length;
-      item.contributionPercent = window.SetkaStatsCore.percentage(events.length, totalActions);
+      const stats = window.SetkaStatsCore.mergeTeamStats(matches.map((match) => window.SetkaStatsCore.calculateMatchStats(match, teamId, {
+        role: item.role
+      })));
+      item.teamStats = stats;
+      item.totalActions = stats.totalActions;
+      item.contributionPercent = window.SetkaStatsCore.percentage(stats.totalActions, totalActions);
       item.playerCount = item.players.size;
-      window.SetkaStatsCore.ACTIONS.forEach((action) => {
-        item.byAction[action.type] = window.SetkaStatsCore.calculateActionStats(events, action.type);
-      });
+      item.byAction = stats.byAction;
+      item.excel = stats.excel;
     });
 
     return Array.from(roles.values()).sort((a, b) => {
-      const ai = ROLE_ORDER.indexOf(a.role);
-      const bi = ROLE_ORDER.indexOf(b.role);
+      const aRole = String(a.role || '').toLowerCase();
+      const bRole = String(b.role || '').toLowerCase();
+      const ai = ROLE_ORDER.findIndex((role) => aRole.includes(role));
+      const bi = ROLE_ORDER.findIndex((role) => bRole.includes(role));
       if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
       return a.role.localeCompare(b.role, 'ru');
     });

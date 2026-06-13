@@ -50,6 +50,31 @@
     return Math.min(5, Math.max(1, Math.round(parsed)));
   }
 
+  function normalizeActionResultCode(result) {
+    const value = String(result || '').trim().toLowerCase();
+    if (result === '+' || value === 'plus' || value === 'плюс' || value === 'эйс' || value === 'очко' || value === 'качество' || value === 'качественно') return 'plus';
+    if (result === '-' || value === 'minus' || value === 'минус' || value === 'ошибка' || value === 'брак') return 'minus';
+    if (result === '/' || value === 'slash' || value === 'neutral' || value === 'средне' || value === 'нейтрально' || value === 'сбитый приём' || value === 'сбитый прием' || value === 'смягчение' || value === 'в игре') return 'slash';
+    if (value === 'error' || result === 'Ошибка' || value === 'прочая ошибка') return 'error';
+    return String(result || '');
+  }
+
+  function getActionResultLabel(actionType, result) {
+    const raw = String(result || '').trim().toLowerCase();
+    const code = actionType === 'error' && (raw === 'ошибка' || raw === 'прочая ошибка')
+      ? 'error'
+      : normalizeActionResultCode(result);
+    const labels = {
+      serve: { plus: 'эйс', minus: 'ошибка', slash: 'сбитый приём' },
+      receive: { plus: 'качество', minus: 'ошибка', slash: 'нейтрально' },
+      attack: { plus: 'очко', minus: 'ошибка', slash: 'в игре' },
+      block: { plus: 'очко', minus: 'ошибка', slash: 'смягчение' },
+      defense: { plus: 'качество', minus: 'ошибка' },
+      error: { error: 'прочая ошибка' }
+    };
+    return labels[actionType]?.[code] || result || code;
+  }
+
   function normalizeScoreValue(value) {
     if (value === '' || value === null || typeof value === 'undefined') return 0;
     const parsed = Number(value);
@@ -93,6 +118,11 @@
   function normalizeEventName(event, teamId) {
     if (!event || typeof event !== 'object') return event;
     const timestamp = event.timestamp || event.time || event.createdAt || new Date().toISOString();
+    const actionType = event.actionType || event.type || event.action || '';
+    const rawActionResult = event.actionResult || event.result || event.resultLabel || event.label || '';
+    const actionResult = actionType === 'error' && String(rawActionResult || '').trim().toLowerCase() === 'ошибка'
+      ? 'error'
+      : normalizeActionResultCode(rawActionResult) || rawActionResult;
     return {
       ...event,
       teamId: event.teamId || teamId || '',
@@ -102,9 +132,24 @@
         teamId: event.teamId || teamId || ''
       }),
       setNumber: normalizeSetNumber(event.setNumber || event.set || event.party || 1),
+      actionType,
+      actionResult,
+      resultLabel: getActionResultLabel(actionType, actionResult),
       timestamp,
       createdAt: event.createdAt || timestamp,
       updatedAt: event.updatedAt || timestamp
+    };
+  }
+
+  function normalizeImportedStats(value) {
+    if (!value || typeof value !== 'object') return null;
+    return {
+      source: value.source || 'excel',
+      sourceLabel: value.sourceLabel || 'Старый Excel',
+      originalFile: value.originalFile || '',
+      sourceImage: value.sourceImage || '',
+      sets: Array.isArray(value.sets) ? value.sets : [],
+      summary: Array.isArray(value.summary) ? value.summary : []
     };
   }
 
@@ -238,16 +283,31 @@
         ? match.lineup
         : [])
       .map(normalizeLineupItem);
-    const location = match.location || match.venue || match.place || 'Площадка не указана';
+    const isLegacyImage = match.dataType === 'legacyImage';
+    const location = match.location || match.venue || match.place || (isLegacyImage ? 'Не указано' : 'Площадка не указана');
     const sets = normalizeSets(match.sets || match.setScores || []);
     const setScores = normalizeSetScores(match.setScores || match.sets || [], sets);
     const finalScore = match.finalScore || match.score || '—';
     const currentSet = normalizeSetNumber(match.currentSet || match.setNumber || 1);
+    const rawDate = match.date;
+    const hasExplicitDate = rawDate !== null
+      && typeof rawDate !== 'undefined'
+      && String(rawDate || '').trim() !== '';
+    const dateIsUnknown = rawDate === null || match.displayDate === 'Не указано';
+    const normalizedDate = hasExplicitDate
+      ? toDateInput(rawDate)
+      : dateIsUnknown
+        ? ''
+        : toDateInput(match.createdAt);
+    const normalizedDisplayDate = match.displayDate
+      || (normalizedDate ? normalizedDate.split('-').reverse().join('.') : 'Не указано');
 
     const normalized = {
       id,
       matchId: id,
-      date: toDateInput(match.date || match.createdAt),
+      date: normalizedDate,
+      displayDate: normalizedDisplayDate,
+      dateNote: match.dateNote || '',
       ourTeam: match.ourTeam || match.teamName || teamData?.name || 'Сетка',
       teamName: match.teamName || match.ourTeam || teamData?.name || 'Сетка',
       teamId,
@@ -261,6 +321,27 @@
       setScores,
       sets,
       result: match.result || '',
+      source: match.source || '',
+      sourceLabel: match.sourceLabel || '',
+      originalFileName: match.originalFileName || '',
+      sourceImage: match.sourceImage || '',
+      dataType: match.dataType || '',
+      imported: Boolean(match.imported),
+      readOnly: Boolean(match.readOnly || match.imported),
+      editableMetadata: Boolean(match.editableMetadata),
+      metadataEditable: Boolean(match.metadataEditable || match.editableMetadata),
+      statsEditableInApp: Boolean(match.statsEditableInApp),
+      digitizingStatus: match.digitizingStatus || '',
+      workflowStatus: match.workflowStatus || '',
+      reviewStatus: match.reviewStatus || '',
+      localOverride: Boolean(match.localOverride),
+      override: match.override || null,
+      metadataMissing: Array.isArray(match.metadataMissing) ? match.metadataMissing : [],
+      syncStatus: match.syncStatus || '',
+      archiveVersion: match.archiveVersion || '',
+      hasLiveEvents: typeof match.hasLiveEvents === 'boolean' ? match.hasLiveEvents : matchEvents.length > 0,
+      importedSets: Number(match.importedSets || match.setsCount || match.importedStats?.sets?.length || 0) || 0,
+      setsCount: Number(match.setsCount || match.importedSets || match.importedStats?.sets?.length || setScores.length || 0) || 0,
       coachComment: match.coachComment || match.comment || '',
       status: match.status || (matchEvents.length > 0 ? 'сохранён локально' : 'черновик'),
       currentSet,
@@ -271,13 +352,14 @@
       bench: Array.isArray(match.bench) ? match.bench.map((player) => normalizeRosterPlayer(player, teamId)) : [],
       substitutions: matchSubstitutions,
       events: matchEvents,
+      importedStats: normalizeImportedStats(match.importedStats),
       createdAt: match.createdAt || new Date().toISOString(),
       updatedAt: match.updatedAt || match.createdAt || new Date().toISOString(),
       title: match.title || `${teamData?.name || 'Сетка'} — ${match.opponent || 'соперник'}`,
       isMock: Boolean(match.isMock)
     };
 
-    if (!normalized.roster.length) {
+    if (!normalized.roster.length && !isLegacyImage) {
       normalized.roster = buildRoster(normalized, teamData);
     }
     if (!normalized.bench.length) {
@@ -371,7 +453,7 @@
       ['serve', 'Подача', ['plus', 'minus', 'slash']],
       ['receive', 'Приём', ['plus', 'minus', 'slash']],
       ['attack', 'Атака', ['plus', 'minus', 'slash']],
-      ['block', 'Блок', ['plus', 'minus']],
+      ['block', 'Блок', ['plus', 'minus', 'slash']],
       ['defense', 'Защита', ['plus', 'minus']],
       ['error', 'Ошибка', ['error']]
     ];
@@ -397,7 +479,7 @@
             actionType: type,
             actionName: name,
             actionResult: result,
-            resultLabel: result === 'plus' ? '+' : result === 'minus' ? '-' : result === 'slash' ? '/' : 'Ошибка',
+            resultLabel: getActionResultLabel(type, result),
             timestamp: new Date(base + events.length * 45000).toISOString()
           });
         }
@@ -454,6 +536,15 @@
     ];
   }
 
+  function getImportedMatches(teamData, events, substitutions) {
+    const imported = window.SetkaImportedMatches?.getImportedMatches
+      ? window.SetkaImportedMatches.getImportedMatches(teamData)
+      : [];
+    return imported
+      .map((match) => normalizeMatch(match, teamData, events, substitutions))
+      .filter(Boolean);
+  }
+
   function getAll(teamData) {
     lastLoadInfo = { damaged: 0, usedMock: false };
     const saved = loadSavedRaw();
@@ -479,6 +570,10 @@
       const normalized = normalizeMatch(current, teamData, events, substitutions);
       if (normalized) byId.set(normalized.id, { ...byId.get(normalized.id), ...normalized });
     }
+
+    getImportedMatches(teamData, events, substitutions).forEach((match) => {
+      if (!byId.has(match.id)) byId.set(match.id, match);
+    });
 
     const matches = Array.from(byId.values())
       .filter((match) => !teamData?.id || match.teamId === teamData.id)

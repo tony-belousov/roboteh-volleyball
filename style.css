@@ -466,14 +466,15 @@ textarea:focus-visible {
 }
 
 .brand-lockup .mini-logo {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
 }
 
 .app-header .brand-lockup h1 {
-  font-size: 32px;
+  font-size: 37px;
   letter-spacing: 0;
+  line-height: 1;
 }
 
 .app-header .brand-lockup p {
@@ -610,8 +611,8 @@ textarea:focus-visible {
 }
 
 .team-logo {
-  width: 88px;
-  height: 88px;
+  width: 128px;
+  height: 82px;
   flex: 0 0 auto;
   display: grid;
   place-items: center;
@@ -628,6 +629,7 @@ textarea:focus-visible {
 .team-logo-image {
   width: 100%;
   height: 100%;
+  padding: 4px;
   object-fit: contain;
   display: block;
 }
@@ -2926,6 +2928,10 @@ details.results-section summary {
   color: var(--accent-2);
 }
 
+.excel-metric-grid {
+  margin-top: 10px;
+}
+
 .table-scroll {
   max-width: 100%;
   overflow-x: auto;
@@ -3009,8 +3015,11 @@ details.results-section summary {
   grid-row: 1 / span 2;
   grid-column: 2;
   align-self: center;
-  font-size: 24px;
+  max-width: min(42vw, 190px);
+  font-size: clamp(15px, 4.4vw, 24px);
   font-weight: 950;
+  line-height: 1.05;
+  text-align: right;
   color: var(--warning);
 }
 
@@ -3060,6 +3069,42 @@ details.results-section summary {
 .match-card-meta span.danger {
   background: rgba(255, 107, 107, 0.14);
   color: #ffc4c4;
+}
+
+.match-card-meta .legacy-badge,
+.legacy-badge {
+  border: 1px solid rgba(255, 198, 41, 0.22);
+  background: rgba(255, 198, 41, 0.13);
+  color: #ffe39a;
+}
+
+.digitize-badge {
+  border: 1px solid rgba(86, 182, 255, 0.22);
+  background: rgba(86, 182, 255, 0.12);
+  color: #cdeaff;
+}
+
+.review-badge {
+  border: 1px solid rgba(255, 107, 107, 0.24);
+  background: rgba(255, 107, 107, 0.12);
+  color: #ffc4c4;
+}
+
+.override-badge {
+  border: 1px solid rgba(41, 211, 145, 0.24);
+  background: rgba(41, 211, 145, 0.12);
+  color: #b8f7dc;
+}
+
+.legacy-image-match-card {
+  border-color: rgba(255, 198, 41, 0.2);
+  background: linear-gradient(135deg, rgba(255, 198, 41, 0.055), rgba(255, 255, 255, 0.035));
+}
+
+.legacy-card-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .action-pill b {
@@ -3116,9 +3161,170 @@ details.results-section summary {
   color: var(--muted);
 }
 
+.best-card em {
+  color: var(--accent-2);
+  font-size: 12px;
+  font-style: normal;
+}
+
 .best-card.problem {
   border-color: rgba(255, 107, 107, 0.28);
   background: rgba(255, 107, 107, 0.09);
+}
+
+.imported-stats-section {
+  border-color: rgba(255, 198, 41, 0.22);
+  background: linear-gradient(135deg, rgba(255, 198, 41, 0.08), rgba(255, 255, 255, 0.035));
+}
+
+.imported-summary-scroll {
+  margin-top: 10px;
+}
+
+.imported-summary-table {
+  min-width: 620px;
+}
+
+.imported-set-players {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.imported-set-players span {
+  display: grid;
+  gap: 2px;
+  color: var(--text);
+}
+
+.legacy-detail-hero {
+  border-color: rgba(255, 198, 41, 0.2);
+}
+
+.legacy-hero-badges,
+.legacy-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.legacy-status-section,
+.legacy-source-section,
+.legacy-metadata-section,
+.legacy-digitize-section {
+  min-width: 0;
+}
+
+.legacy-image-frame {
+  width: 100%;
+  max-height: min(68vh, 620px);
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  -webkit-overflow-scrolling: touch;
+}
+
+.legacy-image-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.legacy-metadata-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.legacy-metadata-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.legacy-metadata-list div {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.legacy-metadata-list dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.legacy-metadata-list dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.legacy-metadata-form {
+  display: grid;
+  gap: 10px;
+}
+
+.legacy-metadata-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.legacy-metadata-form input,
+.legacy-metadata-form textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font: inherit;
+}
+
+.legacy-metadata-form textarea {
+  resize: vertical;
+}
+
+.legacy-image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+  padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(1, 7, 6, 0.94);
+  backdrop-filter: blur(12px);
+}
+
+.legacy-image-viewer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.legacy-image-viewer-body {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #050908;
+  -webkit-overflow-scrolling: touch;
+}
+
+.legacy-image-viewer-body img {
+  display: block;
+  width: max(100%, 980px);
+  height: auto;
 }
 
 .match-detail-hero {
@@ -4164,6 +4370,14 @@ details.results-section summary {
   .season-actions .primary-action,
   .season-actions .secondary-button {
     width: 100%;
+  }
+
+  .legacy-metadata-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .legacy-image-viewer-body img {
+    width: max(100%, 760px);
   }
 }
 

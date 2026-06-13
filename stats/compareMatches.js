@@ -13,7 +13,7 @@
     }
 
     const rows = safeMatches.map((match) => {
-      const teamStats = window.SetkaStatsCore.calculateTeamStats((match.events || []).filter((event) => !teamId || !event.teamId || event.teamId === teamId));
+      const teamStats = window.SetkaStatsCore.calculateMatchStats(match, teamId);
       return {
         matchId: match.id,
         date: match.date,
@@ -34,10 +34,11 @@
     });
 
     const allPlayerStats = window.SetkaStatsPlayers.calculatePlayerStats(safeMatches, teamId);
+    const aggregateStats = window.SetkaStatsCore.mergeTeamStats(safeMatches.map((match) => window.SetkaStatsCore.calculateMatchStats(match, teamId)));
     const problemZones = window.SetkaStatsCore.ACTIONS
       .filter((action) => action.type !== 'error')
       .map((action) => {
-        const stats = window.SetkaStatsCore.calculateActionStats(safeMatches.flatMap((match) => match.events || []).filter((event) => !teamId || !event.teamId || event.teamId === teamId), action.type);
+        const stats = aggregateStats.byAction[action.type];
         return { action: action.name, minusPercent: stats.minusPercent, total: stats.total };
       })
       .sort((a, b) => b.minusPercent - a.minusPercent)

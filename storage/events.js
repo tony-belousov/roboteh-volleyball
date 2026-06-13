@@ -33,6 +33,31 @@
     return Math.min(5, Math.max(1, Math.round(parsed)));
   }
 
+  function normalizeActionResultCode(result) {
+    const value = String(result || '').trim().toLowerCase();
+    if (result === '+' || value === 'plus' || value === 'плюс' || value === 'эйс' || value === 'очко' || value === 'качество' || value === 'качественно') return 'plus';
+    if (result === '-' || value === 'minus' || value === 'минус' || value === 'ошибка' || value === 'брак') return 'minus';
+    if (result === '/' || value === 'slash' || value === 'neutral' || value === 'средне' || value === 'нейтрально' || value === 'сбитый приём' || value === 'сбитый прием' || value === 'смягчение' || value === 'в игре') return 'slash';
+    if (value === 'error' || result === 'Ошибка' || value === 'прочая ошибка') return 'error';
+    return String(result || '');
+  }
+
+  function getActionResultLabel(actionType, result) {
+    const raw = String(result || '').trim().toLowerCase();
+    const code = actionType === 'error' && (raw === 'ошибка' || raw === 'прочая ошибка')
+      ? 'error'
+      : normalizeActionResultCode(result);
+    const labels = {
+      serve: { plus: 'эйс', minus: 'ошибка', slash: 'сбитый приём' },
+      receive: { plus: 'качество', minus: 'ошибка', slash: 'нейтрально' },
+      attack: { plus: 'очко', minus: 'ошибка', slash: 'в игре' },
+      block: { plus: 'очко', minus: 'ошибка', slash: 'смягчение' },
+      defense: { plus: 'качество', minus: 'ошибка' },
+      error: { error: 'прочая ошибка' }
+    };
+    return labels[actionType]?.[code] || result || code;
+  }
+
   function sameTeam(event, teamId) {
     return !teamId || !event.teamId || event.teamId === teamId;
   }
@@ -44,6 +69,11 @@
     const updatedAt = event.updatedAt || event.changedAt || createdAt;
     const setNumber = normalizeSetNumber(event.setNumber || event.set || event.party || 1);
 
+    const actionType = event.actionType || event.type || event.action || '';
+    const rawActionResult = event.actionResult || event.result || event.resultLabel || event.label || '';
+    const actionResult = actionType === 'error' && String(rawActionResult || '').trim().toLowerCase() === 'ошибка'
+      ? 'error'
+      : normalizeActionResultCode(rawActionResult) || rawActionResult;
     return {
       id: String(event.id || `event-${Date.now()}-${Math.random().toString(16).slice(2)}`),
       teamId: event.teamId || '',
@@ -58,10 +88,10 @@
       }),
       setNumber,
       time: event.time || timestamp,
-      actionType: event.actionType || event.type || event.action || '',
+      actionType,
       actionName: event.actionName || '',
-      actionResult: event.actionResult || event.result || '',
-      resultLabel: event.resultLabel || event.label || event.actionResult || event.result || '',
+      actionResult,
+      resultLabel: getActionResultLabel(actionType, actionResult),
       timestamp,
       createdAt,
       updatedAt

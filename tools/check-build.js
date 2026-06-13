@@ -10,6 +10,7 @@ const requiredFiles = [
   'setka-icon.svg',
   'storage/teams.js',
   'storage/events.js',
+  'storage/importedMatches.js',
   'storage/matches.js',
   'stats/calculateTeamStats.js',
   'stats/calculatePlayerStats.js',
@@ -40,6 +41,7 @@ if (!html.includes('<title>Сетка</title>')) {
 [
   'storage/teams.js',
   'storage/events.js',
+  'storage/importedMatches.js',
   'storage/matches.js',
   'stats/calculateTeamStats.js',
   'stats/calculatePlayerStats.js',

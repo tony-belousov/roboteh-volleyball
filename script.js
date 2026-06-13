@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.13.2';
+  const APP_VERSION = '2026.06.13.8';
   const APP_NAME = 'Сетка';
   const STATS_TUTORIAL_VERSION = 'stats-v2-2026-06';
 
@@ -17,68 +17,95 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const MENU_ITEMS = {
     calendar: 'Календарь',
-    coach: 'Тренерская',
     results: 'Результаты',
-    export: 'Экспорт данных',
-    documents: 'Документы',
     scoreboard: 'Электронное табло',
     help: 'Справка',
     sync: 'Облако / синхронизация'
   };
+  const REMOVED_MENU_ROUTES = new Set(['coach', 'export', 'documents']);
 
   const ACTION_GROUPS = [
     {
       type: 'serve',
       name: 'Подача',
       results: [
-        { code: 'plus', label: '+' },
-        { code: 'minus', label: '-' },
-        { code: 'slash', label: '/' }
+        { code: 'plus', label: '+', meaning: 'эйс' },
+        { code: 'minus', label: '-', meaning: 'ошибка' },
+        { code: 'slash', label: '/', meaning: 'сбитый приём' }
       ]
     },
     {
       type: 'receive',
       name: 'Приём',
       results: [
-        { code: 'plus', label: '+' },
-        { code: 'minus', label: '-' },
-        { code: 'slash', label: '/' }
+        { code: 'plus', label: '+', meaning: 'качество' },
+        { code: 'minus', label: '-', meaning: 'ошибка' },
+        { code: 'slash', label: '/', meaning: 'нейтрально' }
       ]
     },
     {
       type: 'attack',
       name: 'Атака',
       results: [
-        { code: 'plus', label: '+' },
-        { code: 'minus', label: '-' },
-        { code: 'slash', label: '/' }
+        { code: 'plus', label: '+', meaning: 'очко' },
+        { code: 'minus', label: '-', meaning: 'ошибка' },
+        { code: 'slash', label: '/', meaning: 'в игре' }
       ]
     },
     {
       type: 'block',
       name: 'Блок',
       results: [
-        { code: 'plus', label: '+' },
-        { code: 'minus', label: '-' }
+        { code: 'plus', label: '+', meaning: 'очко' },
+        { code: 'minus', label: '-', meaning: 'ошибка' },
+        { code: 'slash', label: '/', meaning: 'смягчение' }
       ]
     },
     {
       type: 'defense',
       name: 'Защита',
       results: [
-        { code: 'plus', label: '+' },
-        { code: 'minus', label: '-' }
+        { code: 'plus', label: '+', meaning: 'качество' },
+        { code: 'minus', label: '-', meaning: 'ошибка' }
       ]
     },
     {
       type: 'error',
       name: 'Ошибка',
       results: [
-        { code: 'error', label: 'Ошибка' }
+        { code: 'error', label: 'Ошибка', meaning: 'прочая ошибка' }
       ]
     }
   ];
   const ACTION_GROUP_BY_TYPE = Object.fromEntries(ACTION_GROUPS.map((group) => [group.type, group]));
+
+  function normalizeActionResultCode(resultCode) {
+    const value = String(resultCode || '').trim().toLowerCase();
+    if (resultCode === '+' || value === 'plus' || value === 'плюс' || value === 'эйс' || value === 'очко' || value === 'качество' || value === 'качественно') return 'plus';
+    if (resultCode === '-' || value === 'minus' || value === 'минус' || value === 'ошибка' || value === 'брак') return 'minus';
+    if (resultCode === '/' || value === 'slash' || value === 'neutral' || value === 'средне' || value === 'нейтрально' || value === 'сбитый приём' || value === 'сбитый прием' || value === 'смягчение' || value === 'в игре') return 'slash';
+    if (value === 'error' || resultCode === 'Ошибка' || value === 'прочая ошибка') return 'error';
+    return String(resultCode || '');
+  }
+
+  function getActionResultMeaning(actionType, resultCode) {
+    if (window.SetkaStatsCore?.getActionResultLabel) {
+      return window.SetkaStatsCore.getActionResultLabel(actionType, resultCode);
+    }
+    const normalized = normalizeActionResultCode(resultCode);
+    const group = ACTION_GROUP_BY_TYPE[actionType];
+    const result = group?.results.find((item) => item.code === normalized);
+    return result?.meaning || result?.label || normalized || 'результат';
+  }
+
+  function getActionDisplayText(actionType, resultCode) {
+    if (window.SetkaStatsCore?.getActionDisplayText) {
+      return window.SetkaStatsCore.getActionDisplayText(actionType, resultCode);
+    }
+    const group = ACTION_GROUP_BY_TYPE[actionType];
+    if (actionType === 'error') return 'Прочая ошибка';
+    return `${group?.name || 'Действие'}: ${getActionResultMeaning(actionType, resultCode)}`;
+  }
 
   const OFFICIAL_SEASON_DATA = {
     season: '2025/2026',
@@ -263,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       selector: '.stat-button',
       title: 'Оценка действия',
-      text: 'Кнопки «+», «−» и «/» обозначают результат действия. Для подачи: «+» — эйс, «−» — ошибка, «/» — сбитый приём.'
+      text: 'Кнопки «+», «−» и «/» обозначают результат действия. Для подачи: «+» — эйс, «−» — ошибка, «/» — сбитый приём. Для блока: «+» — очко, «−» — ошибка, «/» — смягчение.'
     },
     {
       selector: '[data-tutorial="undo"]',
@@ -367,6 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
         actionType: '',
         result: ''
       },
+      editingLegacyMatchId: '',
+      imagePreviewMatchId: '',
       cacheKey: '',
       cache: null
     }
@@ -939,6 +968,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showPlaceholder(route) {
+    if (REMOVED_MENU_ROUTES.has(route)) {
+      showScreen('team');
+      return;
+    }
     const title = MENU_ITEMS[route] || 'Раздел';
     const heading = $('.placeholder-body h2');
     if (heading) heading.textContent = route === 'help' ? 'Справка' : 'Скоро будет';
@@ -1317,13 +1350,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getPlayerSeasonShort(playerId) {
     const matches = getActiveTeamMatches();
-    const playerMatches = matches.filter((match) => (match.events || []).some((event) => event.playerId === playerId));
-    const totalActions = playerMatches.reduce((sum, match) => {
-      return sum + (match.events || []).filter((event) => event.playerId === playerId).length;
-    }, 0);
+    const playerStats = matches.map((match) => ({
+      match,
+      stats: window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id, { playerId })
+    })).filter((item) => item.stats.totalActions > 0);
+    const totalActions = playerStats.reduce((sum, item) => sum + item.stats.totalActions, 0);
 
     if (!totalActions) return 'статистики пока нет';
-    return `${playerMatches.length} матчей · ${totalActions} действий`;
+    return `${playerStats.length} матчей · ${totalActions} действий`;
   }
 
   function getPlayerSeasonShortFromStats(playerStats) {
@@ -1423,22 +1457,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerEvents = matches.flatMap((match) => (match.events || [])
       .filter((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id))
       .map((event) => ({ ...event, match })));
-    const playedMatches = matches.filter((match) => (match.events || [])
-      .some((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id)));
-    const setNumbers = new Set(playerEvents.map((event) => event.setNumber).filter(Boolean));
+    const playerMatchStats = matches.map((match) => ({
+      match,
+      stats: window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id, { playerId })
+    }));
+    const playedMatches = playerMatchStats.filter((item) => item.stats.totalActions > 0).map((item) => item.match);
+    const setNumbers = new Set();
+    playedMatches.forEach((match) => {
+      window.SetkaStatsSets.calculateSetStats(match, TEAM_DATA.id).sets.forEach((set) => {
+        const stats = window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id, {
+          playerId,
+          setNumber: set.setKey || set.setNumber
+        });
+        if (stats.totalActions > 0) setNumbers.add(set.setKey || set.setNumber);
+      });
+    });
 
     return {
       matches,
       playedMatches,
       events: playerEvents,
       setCount: setNumbers.size,
-      stats: window.SetkaStatsCore.calculateTeamStats(playerEvents),
-      dynamics: matches.map((match) => ({
+      stats: window.SetkaStatsCore.mergeTeamStats(playerMatchStats.map((item) => item.stats)),
+      dynamics: playerMatchStats.map(({ match, stats }) => ({
         matchId: match.id,
         date: match.date,
         opponent: match.opponent,
-        totalActions: (match.events || []).filter((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id)).length,
-        errors: (match.events || []).filter((event) => event.playerId === playerId && event.actionType === 'error' && (!event.teamId || event.teamId === TEAM_DATA.id)).length
+        totalActions: stats.totalActions,
+        errors: stats.errors.total
       }))
     };
   }
@@ -1468,7 +1514,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderPlayerSeasonStats(season) {
-    if (!season.events.length) {
+    if (!season.stats.totalActions) {
       return renderEmptyState({
         title: 'Статистики пока нет',
         text: 'Игрок появится в статистике после сохранённого матча.',
@@ -1480,8 +1526,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="metric-grid">
         ${metricCard('Матчей', season.playedMatches.length)}
         ${metricCard('Партий', season.setCount)}
-        ${metricCard('Действий', season.events.length)}
-        ${metricCard('Среднее за матч', season.playedMatches.length ? Math.round((season.events.length / season.playedMatches.length) * 10) / 10 : 0)}
+        ${metricCard('Действий', season.stats.totalActions)}
+        ${metricCard('Среднее за матч', season.playedMatches.length ? Math.round((season.stats.totalActions / season.playedMatches.length) * 10) / 10 : 0)}
         ${metricCard('Ошибки', season.stats.errors.total)}
       </div>
       <div class="table-scroll">
@@ -1506,13 +1552,12 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="player-match-list">
         <h3>Матчи игрока</h3>
         ${matches.map((match) => {
-          const events = (match.events || []).filter((event) => event.playerId === playerId && (!event.teamId || event.teamId === TEAM_DATA.id));
-          const errors = events.filter((event) => event.actionType === 'error').length;
+          const stats = window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id, { playerId });
           return `
             <div class="player-match-row">
               <span>${escapeHtml(formatDate(match.date))}</span>
               <strong>${escapeHtml(match.opponent)}</strong>
-              <small>${events.length} действий · ошибок ${errors}</small>
+              <small>${stats.totalActions} действий · ошибок ${stats.errors.total}</small>
             </div>
           `;
         }).join('')}
@@ -2124,7 +2169,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getResultOption(actionType, resultCode) {
     const group = getActionGroup(actionType);
-    return group.results.find((result) => result.code === resultCode) || group.results[0];
+    const normalized = normalizeActionResultCode(resultCode);
+    return group.results.find((result) => result.code === normalized) || group.results[0];
   }
 
   function getStatsJournalPlayers(events) {
@@ -2149,7 +2195,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderResultOptions(actionType, value) {
     const group = getActionGroup(actionType);
-    return group.results.map((result) => option(result.code, result.label, value)).join('');
+    return group.results.map((result) => {
+      const label = group.type === 'error'
+        ? result.label
+        : `${result.label} · ${getActionResultMeaning(group.type, result.code)}`;
+      return option(result.code, label, value);
+    }).join('');
   }
 
   function renderPlayerOptions(players, value) {
@@ -2249,8 +2300,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getCompactActionText(group, result) {
-    if (group.type === 'error') return 'Ошибка';
-    return `${group.name} ${result.label}`;
+    return getActionDisplayText(group.type, result.code);
   }
 
   function renderStatsJournal() {
@@ -2428,7 +2478,7 @@ document.addEventListener('DOMContentLoaded', () => {
         button.type = 'button';
         button.className = group.type === 'error' ? 'stat-button stat-button-error' : 'stat-button';
         button.textContent = result.label;
-        button.setAttribute('aria-label', `${group.name}: ${result.label}`);
+        button.setAttribute('aria-label', getActionDisplayText(group.type, result.code));
         button.addEventListener('click', () => {
           if (!player) return;
           recordStatEvent(player, group, result, button);
@@ -2471,7 +2521,7 @@ document.addEventListener('DOMContentLoaded', () => {
       actionType: group.type,
       actionName: group.name,
       actionResult: result.code,
-      resultLabel: result.label,
+      resultLabel: getActionResultMeaning(group.type, result.code),
       time: timestamp,
       setNumber: state.currentSet,
       timestamp,
@@ -2490,7 +2540,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const undoButton = $('#undo-last-event-button');
     if (undoButton) undoButton.disabled = false;
     updateAutosave(saved ? 'saved' : 'error');
-    showToast(`${group.name} ${result.label} · ${getShortName(player)}`, 'info', 1200);
+    showToast(`${getActionDisplayText(group.type, result.code)} · ${getShortName(player)}`, 'info', 1200);
 
     if (navigator.vibrate) navigator.vibrate(8);
   }
@@ -2592,7 +2642,7 @@ document.addEventListener('DOMContentLoaded', () => {
       actionType: group.type,
       actionName: group.name,
       actionResult: result.code,
-      resultLabel: result.label
+      resultLabel: getActionResultMeaning(group.type, result.code)
     }, TEAM_DATA.id);
 
     if (!updated) {
@@ -3438,6 +3488,57 @@ document.addEventListener('DOMContentLoaded', () => {
     return `<div class="metric-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong>${extra ? `<small>${escapeHtml(extra)}</small>` : ''}</div>`;
   }
 
+  function isImportedStatsMatch(match) {
+    return Boolean(match?.imported || match?.dataType === 'importedStats' || match?.importedStats);
+  }
+
+  function isLegacyImageMatch(match) {
+    return match?.dataType === 'legacyImage' || match?.source === 'legacy_image';
+  }
+
+  function getMatchStatusLabel(match) {
+    if (isLegacyImageMatch(match)) return 'Оцифровка запланирована';
+    if (match?.status === 'requires_digitizing') return 'Оцифровка запланирована';
+    return match?.status || 'статус не указан';
+  }
+
+  function getMetadataReviewLabel(match) {
+    const missing = Array.isArray(match.metadataMissing) ? match.metadataMissing : [];
+    if (match.reviewStatus === 'needs_date_and_opponent_review') return 'Нужно уточнить дату и соперника';
+    if (missing.length) return `Нужно уточнить ${missing.join(' и ')}`;
+    if (isLegacyImageMatch(match) && match.reviewStatus === 'needs_stats_digitizing') return 'Нужно перенести статистику';
+    return '';
+  }
+
+  function getImportedSetCount(match) {
+    return Number(match?.importedSets || match?.setsCount || match?.importedStats?.sets?.length || 0) || 0;
+  }
+
+  function getMatchScoreLabel(match) {
+    if (isLegacyImageMatch(match)) return 'Оцифровка запланирована';
+    if (isImportedStatsMatch(match) && (!match.finalScore || match.finalScore === '—')) {
+      const count = getImportedSetCount(match);
+      return count ? `Статистика по ${count} партиям` : 'Счёт не указан';
+    }
+    return match?.finalScore || '—';
+  }
+
+  function getMatchSetsLabel(match) {
+    if (isLegacyImageMatch(match)) return 'Статистика пока не перенесена';
+    if (Array.isArray(match?.setScores) && match.setScores.length) return match.setScores.join(', ');
+    if (isImportedStatsMatch(match)) {
+      const count = getImportedSetCount(match);
+      return count ? `Статистика по ${count} партиям` : 'Партии без счёта';
+    }
+    return 'Партии не указаны';
+  }
+
+  function getMatchDateLabel(match) {
+    if (match?.displayDate && !match?.date) return match.displayDate;
+    if (!match?.date) return 'Не указано';
+    return formatDate(match.date);
+  }
+
   function renderTeamStatsBlock(teamStats, title) {
     const actions = window.SetkaStatsCore.ACTIONS;
     return `
@@ -3449,14 +3550,34 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="table-scroll">
           <table class="stats-table">
             <thead>
-              <tr><th>Действие</th><th>Всего</th><th>Плюс</th><th>Минус</th><th>Средне</th></tr>
+              <tr><th>Действие</th><th>Всего</th><th>Плюс</th><th>Минус</th><th>Нейтрально</th></tr>
             </thead>
             <tbody>
               ${actions.map((action) => renderActionStatsRow(teamStats.byAction[action.type])).join('')}
             </tbody>
           </table>
         </div>
+        ${renderExcelCompatibleMetrics(teamStats)}
       </section>
+    `;
+  }
+
+  function renderExcelCompatibleMetrics(teamStats) {
+    const excel = teamStats?.excel;
+    if (!excel) return '';
+    return `
+      <div class="metric-grid excel-metric-grid">
+        ${metricCard('Подача качество', window.SetkaStatsCore.formatPercent(excel.serve.qualityPercent), `${excel.serve.aces} эйс · ${excel.serve.disruptedReceive} сбитый приём`)}
+        ${metricCard('Подача брак', window.SetkaStatsCore.formatPercent(excel.serve.errorPercent), `${excel.serve.errors} ошибок`)}
+        ${metricCard('Приём качество', window.SetkaStatsCore.formatPercent(excel.receive.qualityPercent), `${excel.receive.quality} качественно`)}
+        ${metricCard('Приём брак', window.SetkaStatsCore.formatPercent(excel.receive.errorPercent), `${excel.receive.errors} ошибок`)}
+        ${metricCard('Атака реализация', window.SetkaStatsCore.formatPercent(excel.attack.pointPercent), `${excel.attack.points} очков`)}
+        ${metricCard('Атака брак', window.SetkaStatsCore.formatPercent(excel.attack.errorPercent), `${excel.attack.errors} ошибок`)}
+        ${metricCard('Защита качество', excel.defense.quality, `${excel.defense.errors} ошибок`)}
+        ${metricCard('Блок', `${excel.block.points} / ${excel.block.softTouches}`, 'очки / смягчения')}
+        ${metricCard('Блок ошибки', excel.block.errors)}
+        ${metricCard('Прочие ошибки', excel.miscErrors.total)}
+      </div>
     `;
   }
 
@@ -3471,7 +3592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td data-label="Всего">${stats.total}</td>
         <td data-label="Плюс">${stats.plus} · ${window.SetkaStatsCore.formatPercent(stats.plusPercent)}</td>
         <td data-label="Минус">${stats.minus} · ${window.SetkaStatsCore.formatPercent(stats.minusPercent)}</td>
-        <td data-label="Средне">${stats.mode === 'triple' ? `${stats.neutral} · ${window.SetkaStatsCore.formatPercent(stats.neutralPercent)}` : '—'}</td>
+        <td data-label="Нейтрально">${stats.mode === 'triple' ? `${stats.neutral} · ${window.SetkaStatsCore.formatPercent(stats.neutralPercent)}` : '—'}</td>
       </tr>
     `;
   }
@@ -3507,15 +3628,36 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function bestItem(label, player) {
-    return `<div class="best-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(player?.name || 'Недостаточно данных')}</strong><small>${player ? `${player.totalActions} действий` : ''}</small></div>`;
+    return `
+      <div class="best-card">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(player?.name || 'Недостаточно данных')}</strong>
+        <small>${escapeHtml(player?.bestLine || '')}</small>
+        ${player?.bestDetails ? `<em>${escapeHtml(player.bestDetails)}</em>` : ''}
+      </div>
+    `;
   }
 
   function matchBestItem(label, match) {
-    return `<div class="best-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(match?.opponent || 'Недостаточно данных')}</strong><small>${match ? `${formatDate(match.date)} · ${match.finalScore || '—'}` : ''}</small></div>`;
+    return `
+      <div class="best-card">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(match?.opponent || 'Недостаточно данных')}</strong>
+        <small>${match ? `${escapeHtml(getMatchDateLabel(match))} · ${escapeHtml(match.bestLine || getMatchScoreLabel(match))}` : ''}</small>
+        ${match?.bestDetails ? `<em>${escapeHtml(match.bestDetails)}</em>` : ''}
+      </div>
+    `;
   }
 
   function setBestItem(label, item) {
-    return `<div class="best-card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(item ? `${item.match.opponent}, ${formatSetLabel(item.set.setNumber)}` : 'Недостаточно данных')}</strong><small>${item ? `${item.set.totalActions} действий` : ''}</small></div>`;
+    return `
+      <div class="best-card">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(item ? `${item.match.opponent}, ${formatSetLabel(item.set.setNumber)}` : 'Недостаточно данных')}</strong>
+        <small>${escapeHtml(item?.bestLine || '')}</small>
+        ${item?.bestDetails ? `<em>${escapeHtml(item.bestDetails)}</em>` : ''}
+      </div>
+    `;
   }
 
   function formatSetLabel(setNumber) {
@@ -3537,10 +3679,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }) : `
           <div class="compare-controls">
             <select data-compare-index="0">
-              ${matches.map((match) => option(match.id, `${formatDate(match.date)} · ${match.opponent}`, first || matches[0].id)).join('')}
+              ${matches.map((match) => option(match.id, `${getMatchDateLabel(match)} · ${match.opponent}`, first || matches[0].id)).join('')}
             </select>
             <select data-compare-index="1">
-              ${matches.map((match) => option(match.id, `${formatDate(match.date)} · ${match.opponent}`, second || matches[1]?.id || matches[0].id)).join('')}
+              ${matches.map((match) => option(match.id, `${getMatchDateLabel(match)} · ${match.opponent}`, second || matches[1]?.id || matches[0].id)).join('')}
             </select>
           </div>
           <p class="muted">Для сравнения последних матчей, турнира, соперника или места примените фильтры выше и откройте сравнение.</p>
@@ -3550,33 +3692,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderMatchCard(match) {
-    const teamStats = window.SetkaStatsCore.calculateTeamStats(match.events || []);
+    const teamStats = window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id);
     const place = match.location || match.venue || 'Площадка не указана';
+    const legacyImage = isLegacyImageMatch(match);
+    const imported = isImportedStatsMatch(match) && !legacyImage;
+    const reviewLabel = getMetadataReviewLabel(match);
     return `
-      <article class="match-card" data-match-id="${escapeHtml(match.id)}">
+      <article class="match-card ${legacyImage ? 'legacy-image-match-card' : ''}" data-match-id="${escapeHtml(match.id)}">
         <button class="match-card-main" type="button" data-results-action="open-match" data-match-id="${escapeHtml(match.id)}">
-          <span class="match-date">${escapeHtml(formatDate(match.date))}</span>
+          <span class="match-date">${escapeHtml(getMatchDateLabel(match))}</span>
           <strong>${escapeHtml(match.opponent)}</strong>
           <small>${escapeHtml(match.tournament)} · ${escapeHtml(place)}</small>
-          <span class="match-score">${escapeHtml(match.finalScore || '—')}</span>
-          <span class="match-sets">${escapeHtml((match.setScores || []).join(', ') || 'Партии не указаны')}</span>
+          <span class="match-score">${escapeHtml(getMatchScoreLabel(match))}</span>
+          <span class="match-sets">${escapeHtml(getMatchSetsLabel(match))}</span>
         </button>
         <div class="match-card-meta">
-          <span>${escapeHtml(match.status)}</span>
+          <span>${escapeHtml(getMatchStatusLabel(match))}</span>
           ${match.result ? `<span class="${match.result === 'победа' ? 'success' : 'danger'}">${escapeHtml(match.result)}</span>` : ''}
           ${match.matchType ? `<span>${escapeHtml(match.matchType)}</span>` : ''}
-          <span>${teamStats.totalActions} действий</span>
+          ${legacyImage ? '' : `<span>${teamStats.totalActions} действий</span>`}
           ${match.isMock ? '<span>демо</span>' : ''}
+          ${imported ? `<span class="legacy-badge">Исторический импорт</span><span class="legacy-badge">${escapeHtml(match.sourceLabel || 'Старый Excel')}</span>` : ''}
+          ${legacyImage ? `<span class="legacy-badge">${escapeHtml(match.sourceLabel || 'Архивная таблица')}</span><span class="digitize-badge">Оцифровка запланирована</span>` : ''}
+          ${reviewLabel ? `<span class="review-badge">${escapeHtml(reviewLabel)}</span>` : ''}
+          ${match.localOverride ? '<span class="override-badge">Метаданные обновлены</span>' : ''}
         </div>
-        <div class="action-pills">
+        ${legacyImage ? `
+          <div class="legacy-card-note">${escapeHtml(match.dateNote || 'Откройте карточку, чтобы посмотреть исходную таблицу и уточнить данные.')}</div>
+        ` : `<div class="action-pills">
           ${actionPill('Подачи', teamStats.byAction.serve.total)}
           ${actionPill('Приёмы', teamStats.byAction.receive.total)}
           ${actionPill('Атаки', teamStats.byAction.attack.total)}
           ${actionPill('Блоки', teamStats.byAction.block.total)}
           ${actionPill('Защита', teamStats.byAction.defense.total)}
           ${actionPill('Ошибки', teamStats.errors.total, 'danger')}
-        </div>
-        ${match.isMock ? '' : `
+        </div>`}
+        ${match.isMock || imported || legacyImage ? '' : `
           <div class="match-card-actions">
             <button class="text-button danger-outline" type="button" data-results-action="delete-match" data-match-id="${escapeHtml(match.id)}">Удалить матч</button>
           </div>
@@ -3606,47 +3757,233 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const teamStats = window.SetkaStatsCore.calculateTeamStats(match.events || []);
+    if (isLegacyImageMatch(match)) {
+      renderLegacyImageMatch(content, match);
+      return;
+    }
+
+    const teamStats = window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id);
     const playerStats = window.SetkaStatsPlayers.calculatePlayerStats(match, TEAM_DATA.id);
     const roleStats = window.SetkaStatsRoles.calculateRoleStats(match, TEAM_DATA.id);
     const setStats = window.SetkaStatsSets.calculateSetStats(match, TEAM_DATA.id);
     const best = window.SetkaStatsBest.getBestPerformers([match], TEAM_DATA.id);
     const place = match.location || match.venue || 'Площадка не указана';
+    const imported = isImportedStatsMatch(match);
 
     content.innerHTML = `
       <section class="match-detail-hero">
         <button class="text-button" type="button" data-results-action="back-home">Все результаты</button>
         <div>
           <h2>${escapeHtml(match.ourTeam)} — ${escapeHtml(match.opponent)}</h2>
-          <p>${escapeHtml(formatDate(match.date))} · ${escapeHtml(match.tournament)} · ${escapeHtml(place)}</p>
+          <p>${escapeHtml(getMatchDateLabel(match))} · ${escapeHtml(match.tournament)} · ${escapeHtml(place)}${imported ? ` · ${escapeHtml(match.sourceLabel || 'Старый Excel')}` : ''}</p>
         </div>
-        <div class="detail-score">${escapeHtml(match.finalScore || '—')}</div>
+        <div class="detail-score">${escapeHtml(getMatchScoreLabel(match))}</div>
         <div class="match-detail-actions">
           <button class="primary-action" type="button" data-results-action="export-match" data-match-id="${escapeHtml(match.id)}">PDF матча</button>
-          ${match.isMock ? '' : `<button class="text-button danger-outline" type="button" data-results-action="delete-match" data-match-id="${escapeHtml(match.id)}">Удалить матч</button>`}
+          ${match.isMock || imported ? '' : `<button class="text-button danger-outline" type="button" data-results-action="delete-match" data-match-id="${escapeHtml(match.id)}">Удалить матч</button>`}
         </div>
       </section>
 
       <section class="results-section">
         <div class="metric-grid">
           ${metricCard('Статус', match.status)}
+          ${metricCard('Итоговый счёт', match.finalScore && match.finalScore !== '—' ? match.finalScore : 'не указан')}
           ${metricCard('Результат', match.result || 'не указан')}
           ${metricCard('Тип', match.matchType || 'не указан')}
           ${metricCard('Формат', match.matchFormat || 'не указан')}
-          ${metricCard('Партии', (match.setScores || []).join(', ') || '—')}
+          ${metricCard('Партии', getMatchSetsLabel(match))}
           ${metricCard('Действий', teamStats.totalActions)}
           ${metricCard('Ошибки', teamStats.errors.total)}
         </div>
       </section>
       ${match.coachComment ? `<section class="results-section"><div class="results-section-head"><h2>Комментарий тренера</h2></div><p class="muted">${escapeHtml(match.coachComment)}</p></section>` : ''}
+      ${imported ? renderImportedStatsNotice(match) : ''}
+      ${match.editableMetadata || match.metadataEditable ? renderHistoricalMetadataSection(match) : ''}
 
       ${renderTeamStatsBlock(teamStats, 'Команда')}
       ${renderRolesBlock(roleStats, match.id)}
-      ${renderSetsBlock(setStats)}
+      ${renderSetsBlock(setStats, match.source !== 'legacy_image_digitized')}
       ${renderBestBlock(best)}
       ${renderRosterBlock(match)}
       ${renderPlayersBlock(playerStats, match.id)}
       ${renderEventJournal(match)}
+    `;
+  }
+
+  function renderHistoricalMetadataSection(match) {
+    const editing = state.results.editingLegacyMatchId === match.id;
+    return `
+      <section class="results-section legacy-metadata-section">
+        <div class="results-section-head">
+          <h2>Метаданные</h2>
+          ${editing ? '' : `<button class="secondary-button" type="button" data-results-action="edit-legacy-metadata" data-match-id="${escapeHtml(match.id)}">Редактировать данные</button>`}
+        </div>
+        ${editing ? renderLegacyMetadataForm(match) : renderLegacyMetadataView(match)}
+      </section>
+    `;
+  }
+
+  function renderLegacyImageMatch(content, match) {
+    const reviewLabel = getMetadataReviewLabel(match);
+    const editing = state.results.editingLegacyMatchId === match.id;
+    const imagePreviewOpen = state.results.imagePreviewMatchId === match.id;
+    content.innerHTML = `
+      <section class="match-detail-hero legacy-detail-hero">
+        <button class="text-button" type="button" data-results-action="back-home">Все результаты</button>
+        <div>
+          <h2>${escapeHtml(match.ourTeam)} — ${escapeHtml(match.opponent || 'Не указано')}</h2>
+          <p>Дата: ${escapeHtml(getMatchDateLabel(match))} · ${escapeHtml(match.tournament || 'Не указано')}</p>
+        </div>
+        <div class="legacy-hero-badges">
+          <span class="legacy-badge">${escapeHtml(match.sourceLabel || 'Архивная таблица')}</span>
+          <span class="digitize-badge">Оцифровка запланирована</span>
+          ${reviewLabel ? `<span class="review-badge">${escapeHtml(reviewLabel)}</span>` : ''}
+          ${match.localOverride ? '<span class="override-badge">Метаданные обновлены</span>' : ''}
+        </div>
+      </section>
+
+      <section class="results-section legacy-status-section">
+        <div class="results-section-head"><h2>Статус</h2></div>
+        <p class="muted">Этот матч добавлен из архивной таблицы. Статистика ещё не перенесена в цифровой формат.</p>
+        ${match.dateNote ? renderInfoBanner(match.dateNote) : ''}
+      </section>
+
+      <section class="results-section legacy-source-section">
+        <div class="results-section-head">
+          <div>
+            <h2>Исходная таблица</h2>
+            <span>${escapeHtml(match.originalFileName || 'Файл не указан')}</span>
+          </div>
+          <button class="secondary-button" type="button" data-results-action="open-legacy-image" data-match-id="${escapeHtml(match.id)}">Открыть крупно</button>
+        </div>
+        ${match.sourceImage ? `
+          <div class="legacy-image-frame">
+            <img src="${escapeHtml(match.sourceImage)}" alt="Архивная таблица матча ${escapeHtml(match.ourTeam)} — ${escapeHtml(match.opponent)}">
+          </div>
+        ` : renderEmptyState({
+          title: 'Картинка не добавлена',
+          text: 'Исходное изображение таблицы появится после добавления файла в проект.',
+          compact: true
+        })}
+      </section>
+
+      <section class="results-section legacy-metadata-section">
+        <div class="results-section-head">
+          <h2>Метаданные</h2>
+          ${editing ? '' : `<button class="secondary-button" type="button" data-results-action="edit-legacy-metadata" data-match-id="${escapeHtml(match.id)}">Редактировать данные</button>`}
+        </div>
+        ${editing ? renderLegacyMetadataForm(match) : renderLegacyMetadataView(match)}
+      </section>
+
+      <section class="results-section legacy-digitize-section">
+        <div class="results-section-head"><h2>Оцифровка</h2></div>
+        ${renderEmptyState({
+          title: 'Статистика пока не перенесена',
+          text: 'Данные будут добавлены после обработки архивной таблицы.',
+          compact: true
+        })}
+        <button class="secondary-button" type="button" disabled>Оцифровка запланирована</button>
+        <p class="muted">Статистика будет добавлена отдельным обновлением приложения.</p>
+      </section>
+
+      ${imagePreviewOpen ? renderLegacyImagePreview(match) : ''}
+    `;
+  }
+
+  function renderLegacyMetadataView(match) {
+    return `
+      <div class="legacy-metadata-grid">
+        ${metricCard('Соперник', match.opponent || 'Не указано')}
+        ${metricCard('Дата', getMatchDateLabel(match))}
+        ${metricCard('Турнир', match.tournament || 'Не указано')}
+        ${metricCard('Статус', getMatchStatusLabel(match))}
+      </div>
+      <dl class="legacy-metadata-list">
+        <div><dt>Исходный файл</dt><dd>${escapeHtml(match.originalFileName || 'Не указан')}</dd></div>
+        <div><dt>Статус проверки</dt><dd>${escapeHtml(getMetadataReviewLabel(match) || (isImportedStatsMatch(match) ? 'Статистика оцифрована' : 'Нужно перенести статистику'))}</dd></div>
+        <div><dt>Комментарий</dt><dd>${escapeHtml(match.comment || 'Комментарий не добавлен')}</dd></div>
+        <div><dt>Синхронизация</dt><dd>${escapeHtml(match.localOverride ? 'Правки сохранены на этом устройстве' : 'Базовая архивная запись')}</dd></div>
+      </dl>
+      ${match.localOverride ? `
+        <button class="text-button danger-outline" type="button" data-results-action="reset-legacy-metadata" data-match-id="${escapeHtml(match.id)}">Сбросить правки</button>
+      ` : ''}
+    `;
+  }
+
+  function renderLegacyMetadataForm(match) {
+    return `
+      <form class="legacy-metadata-form" data-legacy-edit-form data-match-id="${escapeHtml(match.id)}">
+        <label>
+          <span>Соперник</span>
+          <input name="opponent" type="text" value="${escapeHtml(match.opponent === 'Не указано' ? '' : match.opponent || '')}" placeholder="Например, ДГТУ">
+        </label>
+        <label>
+          <span>Дата</span>
+          <input name="date" type="date" value="${escapeHtml(match.date || '')}">
+        </label>
+        <label>
+          <span>Турнир</span>
+          <input name="tournament" type="text" value="${escapeHtml(match.tournament === 'Не указано' ? '' : match.tournament || '')}" placeholder="Название турнира">
+        </label>
+        <label>
+          <span>Комментарий</span>
+          <textarea name="comment" rows="3" placeholder="Что нужно уточнить по этой таблице">${escapeHtml(match.comment || '')}</textarea>
+        </label>
+        <p class="muted">Правки сохраняются на этом устройстве.</p>
+        <div class="legacy-form-actions">
+          <button class="primary-action" type="button" data-results-action="save-legacy-metadata" data-match-id="${escapeHtml(match.id)}">Сохранить</button>
+          <button class="secondary-button" type="button" data-results-action="cancel-legacy-metadata">Отмена</button>
+        </div>
+      </form>
+    `;
+  }
+
+  function renderLegacyImagePreview(match) {
+    return `
+      <div class="legacy-image-viewer" role="dialog" aria-modal="true" aria-label="Исходная таблица">
+        <div class="legacy-image-viewer-head">
+          <strong>${escapeHtml(match.ourTeam)} — ${escapeHtml(match.opponent || 'Не указано')}</strong>
+          <button class="secondary-button" type="button" data-results-action="close-legacy-image">Закрыть</button>
+        </div>
+        <div class="legacy-image-viewer-body">
+          <img src="${escapeHtml(match.sourceImage)}" alt="Архивная таблица крупно">
+        </div>
+      </div>
+    `;
+  }
+
+  function renderImportedStatsNotice(match) {
+    const summary = match.importedStats?.summary || [];
+    return `
+      <section class="results-section imported-stats-section">
+        <div class="results-section-head">
+          <div>
+            <h2>Исторический импорт</h2>
+            <span>${escapeHtml(match.sourceLabel || 'Старый Excel')} · ${escapeHtml(match.importedStats?.originalFile || 'агрегированная таблица')}</span>
+          </div>
+          <span class="legacy-badge">без живого журнала</span>
+        </div>
+        <p class="muted">Для этого матча загружена агрегированная статистика из архивной таблицы. Последовательного журнала действий нет.</p>
+        ${summary.length ? `
+          <div class="table-scroll imported-summary-scroll">
+            <table class="stats-table imported-summary-table">
+              <thead><tr><th>Игрок</th><th>Подача кач.</th><th>Приём кач.</th><th>Атака</th><th>Блок</th><th>Ошибки</th></tr></thead>
+              <tbody>
+                ${summary.map((player) => `
+                  <tr>
+                    <td data-label="Игрок">${escapeHtml(player.playerName)}<br><small>${escapeHtml(player.playerRole || '')}</small></td>
+                    <td data-label="Подача кач.">${window.SetkaStatsCore.formatPercent(player.percentages?.serveQuality || 0)}</td>
+                    <td data-label="Приём кач.">${window.SetkaStatsCore.formatPercent(player.percentages?.receiveQuality || 0)}</td>
+                    <td data-label="Атака">${window.SetkaStatsCore.formatPercent(player.percentages?.attackPoint || 0)}</td>
+                    <td data-label="Блок">${escapeHtml(`${player.block?.point || 0} очк. / ${player.block?.soft || 0} смягч.`)}</td>
+                    <td data-label="Ошибки">${escapeHtml((player.miscErrors?.total || 0) + (player.receive?.error || 0) + (player.attack?.error || 0) + (player.serve?.error || 0) + (player.block?.error || 0) + (player.defense?.error || 0))}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        ` : ''}
+      </section>
     `;
   }
 
@@ -3737,6 +4074,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderPlayerResultCard(player, matchId) {
+    const excel = player.excel || {};
     return `
       <button class="player-result-card" type="button" data-results-action="open-player-result" data-match-id="${escapeHtml(matchId)}" data-player-id="${escapeHtml(player.playerId)}">
         ${renderAvatar(player, 'small')}
@@ -3746,9 +4084,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </span>
         <span class="player-result-total">${player.totalActions}</span>
         <span class="player-result-line">
-          <span>Подача: ${window.SetkaStatsCore.summarizeActionLine(player.byAction.serve)}</span>
-          <span>Приём: ${window.SetkaStatsCore.summarizeActionLine(player.byAction.receive)}</span>
-          <span>Атака: ${window.SetkaStatsCore.summarizeActionLine(player.byAction.attack)}</span>
+          <span>Подача: ${excel.serve ? window.SetkaStatsCore.formatPercent(excel.serve.qualityPercent) : window.SetkaStatsCore.summarizeActionLine(player.byAction.serve)}</span>
+          <span>Приём: ${excel.receive ? window.SetkaStatsCore.formatPercent(excel.receive.qualityPercent) : window.SetkaStatsCore.summarizeActionLine(player.byAction.receive)}</span>
+          <span>Атака: ${excel.attack ? window.SetkaStatsCore.formatPercent(excel.attack.pointPercent) : window.SetkaStatsCore.summarizeActionLine(player.byAction.attack)}</span>
+          <span>Блок: ${player.byAction.block?.plus || 0}</span>
           <span>Ошибки: ${player.errors}</span>
         </span>
       </button>
@@ -3772,10 +4111,11 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
-  function renderSetsBlock(setStats) {
+  function renderSetsBlock(setStats, open = true) {
+    const openAttribute = open ? ' open' : '';
     if (!setStats.hasSetData) {
       return `
-        <details class="results-section" open>
+        <details class="results-section"${openAttribute}>
           <summary>Партии</summary>
           <div class="results-state compact">Статистика по партиям появится после записи партий.</div>
         </details>
@@ -3783,7 +4123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     return `
-      <details class="results-section" open>
+      <details class="results-section"${openAttribute}>
         <summary>Партии</summary>
         <div class="set-card-list">
           ${setStats.sets.map((set) => `
@@ -3792,6 +4132,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span>${set.totalActions} действий</span>
               <small>Лучшие: ${set.bestPlayers.map((player) => getPlayerDisplayName(player)).join(', ') || 'Недостаточно данных'}</small>
               <small>Проблемные действия: ${set.problemActions.map((action) => `${action.name} -${window.SetkaStatsCore.formatPercent(action.minusPercent)}`).join(', ') || 'нет'}</small>
+              ${renderImportedSetPlayers(set.importedPlayers)}
             </div>
           `).join('')}
         </div>
@@ -3799,7 +4140,33 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
+  function renderImportedSetPlayers(players = []) {
+    if (!players.length) return '';
+    return `
+      <div class="imported-set-players">
+        ${players.map((player) => `
+          <span>
+            <b>${escapeHtml(player.playerName)}</b>
+            <small>Подача ${escapeHtml(player.serve?.total || 0)} · Приём ${escapeHtml(player.receive?.total || 0)} · Атака ${escapeHtml(player.attack?.total || 0)} · Ошибки ${escapeHtml(player.miscErrors?.total || 0)}</small>
+          </span>
+        `).join('')}
+      </div>
+    `;
+  }
+
   function renderEventJournal(match) {
+    if (isImportedStatsMatch(match) && !(match.events || []).length) {
+      return `
+        <details class="results-section">
+          <summary>Журнал действий</summary>
+          ${renderEmptyState({
+            title: 'Журнал живой записи пуст',
+            text: 'Этот матч импортирован из старой Excel-таблицы как сводная статистика по партиям. Отдельных событий по времени в нём нет.',
+            compact: true
+          })}
+        </details>
+      `;
+    }
     const filters = state.results.eventFilters;
     const players = window.SetkaStatsPlayers.calculatePlayerStats(match, TEAM_DATA.id).filter((player) => player.totalActions > 0);
     const roles = uniqueOptions((match.events || []).map((event) => event.playerRole));
@@ -3867,16 +4234,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }).slice().sort((a, b) => String(b.timestamp || b.time).localeCompare(String(a.timestamp || a.time)));
   }
 
+  function getEventResultText(event) {
+    return getActionResultMeaning(event.actionType, event.actionResult || event.resultLabel);
+  }
+
+  function getEventActionText(event) {
+    return getActionDisplayText(event.actionType, event.actionResult || event.resultLabel);
+  }
+
   function renderEventRow(event) {
     const time = event.time ? new Date(event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const actionText = getEventActionText(event);
+    const resultText = getEventResultText(event);
     return `
       <tr>
         <td data-label="Время">${escapeHtml(time)}</td>
         <td data-label="Партия">${escapeHtml(event.setNumber || 'не указана')}</td>
         <td data-label="Игрок">${escapeHtml(getPlayerDisplayName(event.playerName))}</td>
         <td data-label="Амплуа">${escapeHtml(event.playerRole)}</td>
-        <td data-label="Действие">${escapeHtml(event.actionName || event.actionType)}</td>
-        <td data-label="Результат">${escapeHtml(event.resultLabel || event.actionResult)}</td>
+        <td data-label="Действие">${escapeHtml(actionText)}</td>
+        <td data-label="Результат">${escapeHtml(resultText)}</td>
         <td data-label="Действие"><button class="table-danger" type="button" data-results-action="delete-event" data-event-id="${escapeHtml(event.id)}">Удалить</button></td>
       </tr>
     `;
@@ -3884,6 +4261,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderEventCard(event) {
     const time = event.time ? new Date(event.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const actionText = getEventActionText(event);
     return `
       <article class="event-card">
         ${renderAvatar({
@@ -3895,7 +4273,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <strong>${escapeHtml(getPlayerDisplayName(event.playerName))}</strong>
           <small>${escapeHtml(event.playerRole || 'амплуа не указано')}</small>
         </div>
-        <span>${escapeHtml(event.actionName || event.actionType)} · ${escapeHtml(event.resultLabel || event.actionResult)}</span>
+        <span>${escapeHtml(actionText)}</span>
         <small>${escapeHtml(time)} · ${event.setNumber ? `Партия ${escapeHtml(event.setNumber)}` : 'Партия не указана'}</small>
         <button class="table-danger" type="button" data-results-action="delete-event" data-event-id="${escapeHtml(event.id)}">Удалить</button>
       </article>
@@ -3923,6 +4301,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const played = dynamics.filter((item) => item.totalActions > 0);
     const bestMatch = played.slice().sort((a, b) => b.totalActions - a.totalActions)[0];
     const worstMatch = played.slice().sort((a, b) => a.totalActions - b.totalActions)[0];
+    const matchPlayerStats = match
+      ? window.SetkaStatsCore.calculateMatchStats(match, TEAM_DATA.id, { playerId: player.playerId })
+      : window.SetkaStatsCore.calculateTeamStats([]);
+    const seasonPlayerStats = seasonPlayers.find((item) => item.playerId === player.playerId)?.teamStats || window.SetkaStatsCore.calculateTeamStats([]);
 
     content.innerHTML = `
       <section class="match-detail-hero">
@@ -3938,8 +4320,8 @@ document.addEventListener('DOMContentLoaded', () => {
           ${metricCard('Слабый матч', worstMatch ? `${worstMatch.totalActions} действий` : 'Недостаточно данных', worstMatch?.opponent || '')}
         </div>
       </section>
-      ${renderTeamStatsBlock(window.SetkaStatsCore.calculateTeamStats((match?.events || []).filter((event) => event.playerId === player.playerId)), 'Статистика за матч')}
-      ${renderTeamStatsBlock(window.SetkaStatsCore.calculateTeamStats(data.matches.flatMap((item) => item.events || []).filter((event) => event.playerId === player.playerId)), 'Статистика по всем матчам')}
+      ${renderTeamStatsBlock(matchPlayerStats, 'Статистика за матч')}
+      ${renderTeamStatsBlock(seasonPlayerStats, 'Статистика по всем матчам')}
       <section class="results-section">
         <div class="results-section-head"><h2>Динамика по матчам</h2></div>
         <div class="table-scroll">
@@ -3956,12 +4338,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const data = getResultsData();
     const match = data.matches.find((item) => item.id === state.results.selectedMatchId) || data.matches[0];
     const role = state.results.selectedRole;
-    const roleMatches = data.matches.map((item) => ({
-      ...item,
-      events: (item.events || []).filter((event) => event.playerRole === role)
-    }));
-    const allRole = window.SetkaStatsRoles.calculateRoleStats(roleMatches, TEAM_DATA.id).find((item) => item.role === role);
+    const allRole = window.SetkaStatsRoles.calculateRoleStats(data.matches, TEAM_DATA.id).find((item) => item.role === role);
     const matchRole = window.SetkaStatsRoles.calculateRoleStats(match || {}, TEAM_DATA.id).find((item) => item.role === role);
+    const emptyStats = window.SetkaStatsCore.calculateTeamStats([]);
 
     content.innerHTML = `
       <section class="match-detail-hero">
@@ -3976,8 +4355,8 @@ document.addEventListener('DOMContentLoaded', () => {
           ${metricCard('Действий за период', allRole?.totalActions || 0)}
         </div>
       </section>
-      ${renderTeamStatsBlock(window.SetkaStatsCore.calculateTeamStats((match?.events || []).filter((event) => event.playerRole === role)), 'Амплуа в матче')}
-      ${renderTeamStatsBlock(window.SetkaStatsCore.calculateTeamStats(data.matches.flatMap((item) => item.events || []).filter((event) => event.playerRole === role)), 'Амплуа за период')}
+      ${renderTeamStatsBlock(matchRole?.teamStats || emptyStats, 'Амплуа в матче')}
+      ${renderTeamStatsBlock(allRole?.teamStats || emptyStats, 'Амплуа за период')}
     `;
   }
 
@@ -4144,6 +4523,40 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    if (action === 'edit-legacy-metadata') {
+      state.results.editingLegacyMatchId = button.dataset.matchId;
+      renderResults();
+      return;
+    }
+
+    if (action === 'cancel-legacy-metadata') {
+      state.results.editingLegacyMatchId = '';
+      renderResults();
+      return;
+    }
+
+    if (action === 'save-legacy-metadata') {
+      saveLegacyMetadata(button);
+      return;
+    }
+
+    if (action === 'reset-legacy-metadata') {
+      resetLegacyMetadata(button.dataset.matchId);
+      return;
+    }
+
+    if (action === 'open-legacy-image') {
+      state.results.imagePreviewMatchId = button.dataset.matchId;
+      renderResults();
+      return;
+    }
+
+    if (action === 'close-legacy-image') {
+      state.results.imagePreviewMatchId = '';
+      renderResults();
+      return;
+    }
+
     if (action === 'export-team') {
       const data = getResultsData();
       executePdfExport(() => window.SetkaPdfExport.exportTeamPdf(data.filteredMatches, 'Выбранный период'));
@@ -4181,6 +4594,54 @@ document.addEventListener('DOMContentLoaded', () => {
       const comparison = window.SetkaStatsCompare.compareMatches(selected.length >= 2 ? selected : data.filteredMatches.slice(0, 2), TEAM_DATA.id);
       executePdfExport(() => window.SetkaPdfExport.exportComparePdf(comparison));
     }
+  }
+
+  function saveLegacyMetadata(button) {
+    const matchId = button?.dataset.matchId || state.results.selectedMatchId;
+    const form = button?.closest('[data-legacy-edit-form]');
+    if (!form || !matchId) {
+      showToast('Не удалось сохранить данные', 'error');
+      return;
+    }
+    const formData = new FormData(form);
+    const patch = {
+      opponent: formData.get('opponent') || '',
+      date: formData.get('date') || '',
+      tournament: formData.get('tournament') || '',
+      comment: formData.get('comment') || ''
+    };
+    const ok = window.SetkaImportedMatches?.saveLegacyMatchOverride?.(matchId, patch);
+    if (!ok) {
+      showToast('Не удалось сохранить данные', 'error');
+      return;
+    }
+    state.results.editingLegacyMatchId = '';
+    state.results.cacheKey = '';
+    state.results.cache = null;
+    renderResults();
+    showToast('Метаданные обновлены');
+  }
+
+  async function resetLegacyMetadata(matchId) {
+    if (!matchId) return;
+    const ok = await confirmModal({
+      title: 'Сбросить правки?',
+      message: 'Будут удалены только локальные изменения метаданных. Архивный матч останется в приложении.',
+      confirmText: 'Сбросить',
+      cancelText: 'Отмена',
+      danger: true
+    });
+    if (!ok) return;
+    const reset = window.SetkaImportedMatches?.resetLegacyMatchOverride?.(matchId);
+    if (!reset) {
+      showToast('Не удалось сбросить правки', 'error');
+      return;
+    }
+    state.results.editingLegacyMatchId = '';
+    state.results.cacheKey = '';
+    state.results.cache = null;
+    renderResults();
+    showToast('Правки сброшены');
   }
 
   async function deleteResultsEvent(eventId) {
@@ -4233,6 +4694,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (match.isMock) {
       showToast('Демонстрационный матч не удаляется', 'warning');
+      return;
+    }
+
+    if (isImportedStatsMatch(match) || match.readOnly) {
+      showToast('Исторический импорт не удаляется', 'warning');
       return;
     }
 

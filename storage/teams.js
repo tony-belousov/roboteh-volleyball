@@ -1,8 +1,8 @@
 (function () {
   const ACTIVE_TEAM_KEY = 'setka.activeTeamId';
   const DEFAULT_TEAM_ID = 'robotech';
-  const ROBOTECH_LOGO = 'assets/teams/robotech-logo.jpg';
-  const ROBOTECH_2_LOGO = 'assets/teams/robotech-2-logo.jpg';
+  const ROBOTECH_LOGO = 'assets/teams/robotech-logo.png';
+  const ROBOTECH_2_LOGO = 'assets/teams/robotech-2-logo.png';
   const TEAM_DEFAULT_PHOTOS = {
     robotech: 'assets/placeholders/robotech-default.png',
     robotech_2: 'assets/placeholders/robotech2-default.png'
