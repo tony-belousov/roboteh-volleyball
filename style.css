@@ -465,6 +465,21 @@ textarea:focus-visible {
   min-width: 0;
 }
 
+.brand-lockup .mini-logo {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+}
+
+.app-header .brand-lockup h1 {
+  font-size: 32px;
+  letter-spacing: 0;
+}
+
+.app-header .brand-lockup p {
+  font-weight: 750;
+}
+
 .account-pill {
   max-width: none;
   white-space: nowrap;
@@ -1295,10 +1310,6 @@ img.avatar {
   justify-content: flex-end;
 }
 
-.stats-match-title {
-  grid-area: title;
-}
-
 .stats-small-button {
   min-width: 54px;
   min-height: 36px;
@@ -1353,23 +1364,52 @@ img.avatar {
   grid-area: title;
   min-width: 0;
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: 2px;
+  column-gap: 7px;
   text-align: left;
+  overflow: hidden;
 }
 
-.stats-match-title strong,
-.stats-match-title span {
+.stats-team-logo {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(41, 211, 145, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stats-team-logo .team-logo-image {
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  object-fit: contain;
+}
+
+.stats-match-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.stats-match-copy strong,
+.stats-match-copy small {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.stats-match-title strong {
+.stats-match-copy strong {
   font-size: 17px;
   line-height: 1.05;
 }
 
-.stats-match-title span {
+.stats-match-copy small {
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
@@ -2196,16 +2236,22 @@ img.avatar {
   }
 
   .stats-match-title {
-    text-align: center;
+    grid-template-columns: 28px minmax(0, 1fr);
+    column-gap: 5px;
   }
 
-  .stats-match-title strong {
+  .stats-team-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  .stats-match-copy strong {
     font-size: 14px;
     line-height: 1;
   }
 
-  .stats-match-title span {
-    font-size: 11px;
+  .stats-match-copy small {
+    font-size: 10px;
     line-height: 1.05;
   }
 
@@ -2448,7 +2494,7 @@ img.avatar {
     font-size: 12px;
   }
 
-  .stats-match-title strong {
+  .stats-match-copy strong {
     font-size: 13px;
   }
 

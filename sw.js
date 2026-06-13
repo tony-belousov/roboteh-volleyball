@@ -1,4 +1,4 @@
-const CACHE_VERSION = '2026.06.13.1';
+const CACHE_VERSION = '2026.06.13.2';
 const APP_SHELL_CACHE = `setka-app-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `setka-runtime-${CACHE_VERSION}`;
 const IMAGE_CACHE = `setka-images-${CACHE_VERSION}`;
@@ -14,7 +14,8 @@ const CORE_ASSETS = [
   './setka-icon.svg',
   './setka-icon-192.png',
   './setka-icon-512.png',
-  './assets/brand/robotech-logo.png',
+  './assets/teams/robotech-logo.jpg',
+  './assets/teams/robotech-2-logo.jpg',
   './assets/placeholders/robotech-default.png',
   './assets/placeholders/robotech2-default.png',
   './storage/teams.js',

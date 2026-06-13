@@ -1,7 +1,8 @@
 (function () {
   const ACTIVE_TEAM_KEY = 'setka.activeTeamId';
   const DEFAULT_TEAM_ID = 'robotech';
-  const ROBOTECH_LOGO = 'assets/brand/robotech-logo.png';
+  const ROBOTECH_LOGO = 'assets/teams/robotech-logo.jpg';
+  const ROBOTECH_2_LOGO = 'assets/teams/robotech-2-logo.jpg';
   const TEAM_DEFAULT_PHOTOS = {
     robotech: 'assets/placeholders/robotech-default.png',
     robotech_2: 'assets/placeholders/robotech2-default.png'
@@ -188,7 +189,7 @@
       subtitle: 'Волейбольная команда · сезон 2025/2026',
       description: 'Второй профиль Роботеха с отдельным составом, матчами и статистикой.',
       logoText: '2',
-      logo: ROBOTECH_LOGO,
+      logo: ROBOTECH_2_LOGO,
       contacts: [
         { label: 'Телефон', value: 'Будет заполнено' },
         { label: 'Почта', value: 'Будет заполнено' }

@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.13.1';
+  const APP_VERSION = '2026.06.13.2';
   const APP_NAME = 'Сетка';
   const STATS_TUTORIAL_VERSION = 'stats-v2-2026-06';
 
@@ -2343,15 +2343,12 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderStatsPanel() {
     const match = state.currentMatch;
     const score = match ? getSetScore(match) : null;
-    const statsHeading = $('.stats-match-title');
-    renderSectionHeadingInto(
-      statsHeading,
-      match?.opponent || 'Запись статистики',
-      match
-        ? `${TEAM_DATA.name} · Партия ${state.currentSet} · ${score ? score.score : '0:0'}`
-        : `${TEAM_DATA.name} · активный профиль`,
-      { compact: true, titleId: 'stats-match-name', subtitleId: 'stats-set-score' }
-    );
+    const statsLogo = $('.stats-team-logo');
+    if (statsLogo) statsLogo.innerHTML = teamLogoMarkup(TEAM_DATA, 'compact');
+    $('#stats-match-name').textContent = match?.opponent || 'Запись статистики';
+    $('#stats-set-score').textContent = match
+      ? `${TEAM_DATA.name} · Партия ${state.currentSet} · ${score ? score.score : '0:0'}`
+      : `${TEAM_DATA.name} · активный профиль`;
     renderStatsSetTabs();
     renderStatsScorePanel();
     renderStatsJournal();
