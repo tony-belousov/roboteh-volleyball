@@ -121,7 +121,18 @@
       height: 181,
       status: 'запас'
     }),
-    makePlayer({ id: 'robotech-11', teamId: 'robotech', number: 11, fullName: 'Шеин Александр Денисович', birthDate: '1995-07-02', role: 'Доигровщик', roleKey: 'outside', height: 192, status: 'запас' })
+    makePlayer({ id: 'robotech-11', teamId: 'robotech', number: 11, fullName: 'Шеин Александр Денисович', birthDate: '1995-07-02', role: 'Доигровщик', roleKey: 'outside', height: 192, status: 'запас' }),
+    makePlayer({
+      id: 'robotech2-6',
+      teamId: 'robotech',
+      number: 12,
+      fullName: 'Тистимиров Дмитрий Аркадьевич',
+      birthDate: '1996-09-26',
+      role: 'Связующий',
+      roleKey: 'setter',
+      height: 187,
+      status: 'основной состав'
+    })
   ];
 
   const robotech2Players = [
@@ -130,17 +141,6 @@
     makePlayer({ id: 'robotech2-3', teamId: 'robotech_2', number: 3, fullName: 'Мищенко Илья Антонович', birthDate: '1997-02-14', role: 'Блокирующий', roleKey: 'middle', height: 201, status: 'основной состав' }),
     makePlayer({ id: 'robotech2-4', teamId: 'robotech_2', number: 4, fullName: 'Рзаев Алексей Владимирович', birthDate: '1995-05-07', role: 'Либеро', roleKey: 'libero', height: 180, status: 'основной состав' }),
     makePlayer({ id: 'robotech2-5', teamId: 'robotech_2', number: 5, fullName: 'Стариков Евгений Алексеевич', birthDate: '1997-03-11', role: 'Связующий', roleKey: 'setter', height: 188, status: 'основной состав' }),
-    makePlayer({
-      id: 'robotech2-6',
-      teamId: 'robotech_2',
-      number: 6,
-      fullName: 'Тистимиров Дмитрий Аркадьевич',
-      birthDate: '1996-09-26',
-      role: 'Связующий',
-      roleKey: 'setter',
-      height: 187,
-      status: 'основной состав'
-    }),
     makePlayer({ id: 'robotech2-7', teamId: 'robotech_2', number: 7, fullName: 'Тюрин Дмитрий Александрович', birthDate: '1987-08-27', role: 'Либеро', roleKey: 'libero', height: 181, status: 'запас' }),
     makePlayer({ id: 'robotech2-8', teamId: 'robotech_2', number: 8, fullName: 'Чарыев Мерген', birthDate: null, role: 'Диагональный', roleKey: 'opposite', height: 198, status: 'основной состав', todo: 'Уточнить отчество и дату рождения.' }),
     makePlayer({ id: 'robotech2-9', teamId: 'robotech_2', number: 9, fullName: 'Чернышев Александр Андреевич', birthDate: '2006-08-25', role: 'Блокирующий', roleKey: 'middle', height: 204, status: 'запас' }),

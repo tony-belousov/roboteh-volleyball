@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const APP_VERSION = '2026.06.12.3';
+  const APP_VERSION = '2026.06.13.1';
   const APP_NAME = 'Сетка';
+  const STATS_TUTORIAL_VERSION = 'stats-v2-2026-06';
 
   const STORAGE_KEYS = {
     activeAccount: 'setka.activeAccount',
@@ -10,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMatch: 'setka.currentMatch',
     statsEvents: 'setka.statsEvents',
     substitutions: 'setka.substitutions',
-    statsTutorialSeen: 'setka.statsTutorialSeen'
+    statsTutorialSeen: 'setka.statsTutorialSeen',
+    statsTutorialVersion: 'setka.statsTutorialVersion'
   };
 
   const MENU_ITEMS = {
@@ -241,27 +243,27 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       selector: '[data-tutorial="score"]',
       title: 'Счёт',
-      text: 'Здесь отображается счёт текущей партии. Используйте кнопки рядом, чтобы быстро изменить счёт.'
+      text: 'Здесь отображается счёт текущей партии.'
     },
     {
       selector: '[data-tutorial="score-controls"]',
-      title: 'Очки команды',
-      text: 'Кнопка с буквой команды добавляет очко вашей команде, кнопка “С” — сопернику, а “−” уменьшает соответствующий счёт.'
+      title: 'Очки',
+      text: 'Эти кнопки помогают быстро менять счёт вашей команды и соперника. Кнопка с буквой команды добавляет очко вам, «С» — сопернику, а «−» уменьшает нужный счёт.'
     },
     {
       selector: '[data-tutorial="players"]',
       title: 'Игроки',
-      text: 'В этой зоне находятся игроки активной команды. Нажимайте действия напротив нужного игрока.'
+      text: 'В этой зоне находятся игроки активной команды. Выбирайте нужного игрока и записывайте его действия.'
     },
     {
-      selector: '[data-tutorial="action-buttons"]',
-      title: 'Действия',
+      selector: '[data-tutorial="player-actions"], [data-tutorial="action-buttons"]',
+      title: 'Действия игрока',
       text: 'Для каждого игрока можно записать подачу, приём, атаку, блок, защиту или ошибку.'
     },
     {
       selector: '.stat-button',
       title: 'Оценка действия',
-      text: 'Кнопки “+”, “−” и “/” обозначают результат действия. “+” — удачно, “−” — ошибка, “/” — нейтрально или средне.'
+      text: 'Кнопки «+», «−» и «/» обозначают результат действия. Для подачи: «+» — эйс, «−» — ошибка, «/» — сбитый приём.'
     },
     {
       selector: '[data-tutorial="undo"]',
@@ -286,7 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
       selector: '',
       title: 'Готово',
-      text: 'Теперь можно записывать статистику матча. Обучение можно пройти повторно в справке или через кнопку обучения.'
+      text: 'Теперь можно записывать статистику матча. Обучение можно пройти повторно в разделе «Справка».'
     }
   ];
 
@@ -638,6 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
     state.results.selectedRole = '';
     hydrateLineup();
     renderProfileSwitcher();
+    refreshSectionHeaders();
     renderTeam();
     if (state.screen === 'stats') {
       enterStatsScreen();
@@ -731,6 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const accountText = getAccountText();
     $('#welcome-account').textContent = accountText;
     renderProfileSwitcher();
+    refreshSectionHeaders();
   }
 
   function renderProfileSwitcher() {
@@ -759,6 +763,7 @@ document.addEventListener('DOMContentLoaded', () => {
     $$('.screen').forEach((screen) => {
       screen.classList.toggle('hidden', screen.dataset.screen !== screenName);
     });
+    refreshSectionHeaders();
 
     closeSubstitution();
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -935,12 +940,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showPlaceholder(route) {
     const title = MENU_ITEMS[route] || 'Раздел';
-    $('#placeholder-title').textContent = title;
-    $('#placeholder-text').textContent = `${title}: скоро будет. Модуль зарезервирован для следующего этапа.`;
+    const heading = $('.placeholder-body h2');
+    if (heading) heading.textContent = route === 'help' ? 'Справка' : 'Скоро будет';
+    $('#placeholder-text').textContent = route === 'help'
+      ? 'Короткие подсказки и обучение для рабочих сценариев приложения.'
+      : `${title}: скоро будет. Модуль зарезервирован для следующего этапа.`;
+    const placeholderHeading = $('#placeholder-section-heading');
+    if (placeholderHeading) {
+      placeholderHeading.dataset.sectionTitle = title;
+      placeholderHeading.dataset.sectionRoute = route;
+    }
+    renderSectionHeadingInto(
+      placeholderHeading,
+      title,
+      route === 'help' ? `${TEAM_DATA.name} · обучение` : `${TEAM_DATA.name} · активный профиль`
+    );
     const actions = $('#placeholder-actions');
     if (actions) {
       actions.innerHTML = route === 'help'
-        ? '<button class="primary-action" type="button" data-placeholder-action="start-stats-tutorial">Пройти обучение записи статистики</button>'
+        ? `
+          <section class="help-learning-card" aria-label="Обучение">
+            <span class="season-eyebrow">Обучение</span>
+            <h3>Запись статистики</h3>
+            <p>Покажем основные кнопки и сценарии записи действий во время матча.</p>
+            <div>
+              <button class="primary-action" type="button" data-placeholder-action="start-stats-tutorial">Пройти обучение</button>
+              <button class="secondary-button" type="button" data-placeholder-action="create-stats-match">Создать матч</button>
+            </div>
+          </section>
+        `
         : '';
     }
     showScreen('placeholder');
@@ -950,26 +978,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const button = event.target.closest('[data-placeholder-action]');
     if (!button) return;
     if (button.dataset.placeholderAction === 'start-stats-tutorial') {
+      if (!state.currentMatch) {
+        showToast('Сначала создайте матч, чтобы пройти обучение записи статистики', 'info');
+        return;
+      }
       showScreen('stats');
       window.setTimeout(() => {
-        if (state.currentMatch) {
-          startStatsTutorial(true);
-        } else {
-          showToast('Создайте матч, затем запустите обучение', 'info');
-        }
+        startStatsTutorial(true);
       }, 120);
+    }
+    if (button.dataset.placeholderAction === 'create-stats-match') {
+      showScreen('stats');
     }
   }
 
   function maybeStartStatsTutorial() {
     if (!state.currentMatch || state.screen !== 'stats') return;
-    if (storage.load(STORAGE_KEYS.statsTutorialSeen, false)) return;
+    if (hasSeenCurrentStatsTutorial()) return;
     startStatsTutorial(false);
+  }
+
+  function hasSeenCurrentStatsTutorial() {
+    return storage.load(STORAGE_KEYS.statsTutorialVersion, '') === STATS_TUTORIAL_VERSION;
+  }
+
+  function markCurrentStatsTutorialSeen() {
+    storage.save(STORAGE_KEYS.statsTutorialSeen, true);
+    storage.save(STORAGE_KEYS.statsTutorialVersion, STATS_TUTORIAL_VERSION);
   }
 
   function startStatsTutorial(force = false) {
     if (!state.currentMatch) return;
-    if (!force && storage.load(STORAGE_KEYS.statsTutorialSeen, false)) return;
+    if (!force && hasSeenCurrentStatsTutorial()) return;
     closeStatsJournalMode();
     renderStatsPanel();
     state.statsTutorialStep = 0;
@@ -998,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeStatsTutorial(saveSeen = true) {
     clearStatsTutorialHighlight();
     $('#stats-tutorial-overlay')?.remove();
-    if (saveSeen) storage.save(STORAGE_KEYS.statsTutorialSeen, true);
+    if (saveSeen) markCurrentStatsTutorialSeen();
   }
 
   function renderStatsTutorialStep() {
@@ -1065,6 +1105,46 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderTeamLogoInto(element, team = TEAM_DATA) {
     if (!element) return;
     element.innerHTML = teamLogoMarkup(team);
+  }
+
+  function sectionHeadingMarkup(title, subtitle, options = {}) {
+    const compactClass = options.compact ? ' compact' : '';
+    const titleId = options.titleId ? ` id="${escapeHtml(options.titleId)}"` : '';
+    const subtitleId = options.subtitleId ? ` id="${escapeHtml(options.subtitleId)}"` : '';
+    return `
+      <span class="section-logo${compactClass}" aria-hidden="true">${teamLogoMarkup(TEAM_DATA, 'compact')}</span>
+      <span class="section-heading-copy">
+        <strong${titleId}>${escapeHtml(title)}</strong>
+        <small${subtitleId}>${escapeHtml(subtitle)}</small>
+      </span>
+    `;
+  }
+
+  function renderSectionHeadingInto(element, title, subtitle, options = {}) {
+    if (!element) return;
+    element.innerHTML = sectionHeadingMarkup(title, subtitle, options);
+  }
+
+  function renderSectionHeader(title, subtitle, buttonAttributes = 'data-back') {
+    return `
+      <header class="section-header">
+        <button class="back-button" type="button" ${buttonAttributes}>Меню</button>
+        <div class="section-heading" data-tutorial="section-header">
+          ${sectionHeadingMarkup(title, subtitle)}
+        </div>
+      </header>
+    `;
+  }
+
+  function refreshSectionHeaders() {
+    renderSectionHeadingInto($('#team-section-heading'), 'Моя команда', `${TEAM_DATA.name} · состав и сезон`);
+    renderSectionHeadingInto($('#player-section-heading'), 'Игрок', `${TEAM_DATA.name} · карточка и статистика`);
+    renderSectionHeadingInto($('#results-section-heading'), 'Результаты', `${TEAM_DATA.name} · сезон ${OFFICIAL_SEASON_DATA.season}`);
+    const placeholderHeading = $('#placeholder-section-heading');
+    const placeholderTitle = placeholderHeading?.dataset.sectionTitle || 'Раздел';
+    const placeholderRoute = placeholderHeading?.dataset.sectionRoute || '';
+    const placeholderSubtitle = placeholderRoute === 'help' ? `${TEAM_DATA.name} · обучение` : `${TEAM_DATA.name} · активный профиль`;
+    renderSectionHeadingInto(placeholderHeading, placeholderTitle, placeholderSubtitle);
   }
 
   function getTeamMetrics(matches) {
@@ -1655,10 +1735,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const starterIds = new Set(TEAM_DATA.starterSlots.map((slot) => slot.playerId));
 
     setup.innerHTML = `
-      <header class="section-header">
-        <button class="back-button" type="button" data-setup-action="back-menu">Меню</button>
-        <h1>Новый матч</h1>
-      </header>
+      ${renderSectionHeader('Новый матч', `${TEAM_DATA.name} · активный профиль`, 'data-setup-action="back-menu"')}
       <section class="match-setup-hero">
         <div class="team-logo setup-logo">${teamLogoMarkup(TEAM_DATA, 'compact')}</div>
         <div>
@@ -2026,7 +2103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderStatsSetTabs();
     renderStatsScorePanel();
     const title = $('#stats-set-score');
-    if (title) title.textContent = `Партия ${state.currentSet} · ${score.score}`;
+    if (title) title.textContent = `${TEAM_DATA.name} · Партия ${state.currentSet} · ${score.score}`;
     updateAutosave();
   }
 
@@ -2266,10 +2343,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderStatsPanel() {
     const match = state.currentMatch;
     const score = match ? getSetScore(match) : null;
-    $('#stats-match-name').textContent = match ? match.opponent : TEAM_DATA.name;
-    $('#stats-set-score').textContent = match
-      ? `Партия ${state.currentSet} · ${score ? score.score : '0:0'}`
-      : `Партия ${state.currentSet}`;
+    const statsHeading = $('.stats-match-title');
+    renderSectionHeadingInto(
+      statsHeading,
+      match?.opponent || 'Запись статистики',
+      match
+        ? `${TEAM_DATA.name} · Партия ${state.currentSet} · ${score ? score.score : '0:0'}`
+        : `${TEAM_DATA.name} · активный профиль`,
+      { compact: true, titleId: 'stats-match-name', subtitleId: 'stats-set-score' }
+    );
     renderStatsSetTabs();
     renderStatsScorePanel();
     renderStatsJournal();
@@ -2341,7 +2423,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const cell = document.createElement('div');
       cell.className = `stats-cell stats-action-cell result-count-${group.results.length}`;
       cell.setAttribute('role', 'cell');
-      cell.dataset.tutorial = 'action-buttons';
+      cell.dataset.tutorial = 'player-actions';
       cell.dataset.actionLabel = group.name;
 
       group.results.forEach((result) => {

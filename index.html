@@ -91,7 +91,10 @@
     <section id="team-screen" class="screen team-screen hidden" data-screen="team" aria-label="Моя команда">
       <header class="section-header">
         <button class="back-button" type="button" data-back>Меню</button>
-        <h1>Моя команда</h1>
+        <div id="team-section-heading" class="section-heading" data-section-title="Моя команда" data-section-subtitle="состав и сезон" data-tutorial="section-header">
+          <span class="section-logo">Р</span>
+          <span><strong>Моя команда</strong><small>Роботех · состав и сезон</small></span>
+        </div>
       </header>
 
       <div class="team-hero">
@@ -138,7 +141,10 @@
     <section id="player-screen" class="screen player-screen hidden" data-screen="player" aria-label="Карточка игрока">
       <header class="section-header">
         <button class="back-button" type="button" id="player-back">Назад</button>
-        <h1>Игрок</h1>
+        <div id="player-section-heading" class="section-heading" data-section-title="Игрок" data-section-subtitle="карточка и статистика">
+          <span class="section-logo">Р</span>
+          <span><strong>Игрок</strong><small>Роботех · карточка и статистика</small></span>
+        </div>
       </header>
       <div id="player-card" class="player-card"></div>
     </section>
@@ -156,9 +162,12 @@
       <div class="stats-workbench">
         <header class="stats-topbar">
           <button class="stats-menu-button" type="button" data-back data-tutorial="menu">Меню</button>
-          <div class="stats-match-title" data-tutorial="match-info">
-            <strong id="stats-match-name">Сетка</strong>
-            <span id="stats-set-score">Партия 1</span>
+          <div class="stats-match-title section-heading compact" data-tutorial="match-info">
+            <span class="section-logo">Р</span>
+            <span>
+              <strong id="stats-match-name">Запись статистики</strong>
+              <small id="stats-set-score">Роботех · Партия 1</small>
+            </span>
           </div>
           <div class="stats-top-actions">
             <button class="stats-small-button undo" type="button" id="undo-last-event-button" title="Отменить последнее действие" data-tutorial="undo">Отменить</button>
@@ -211,7 +220,10 @@
     <section id="results-screen" class="screen results-screen hidden" data-screen="results" aria-label="Результаты">
       <header class="section-header">
         <button class="back-button" type="button" data-back>Меню</button>
-        <h1>Результаты</h1>
+        <div id="results-section-heading" class="section-heading" data-section-title="Результаты" data-section-subtitle="сезон 2025/2026">
+          <span class="section-logo">Р</span>
+          <span><strong>Результаты</strong><small>Роботех · сезон 2025/2026</small></span>
+        </div>
       </header>
       <div id="results-content" class="results-content" aria-live="polite">
         <div class="results-loading" role="status">
@@ -238,7 +250,10 @@
     <section id="placeholder-screen" class="screen placeholder-screen hidden" data-screen="placeholder" aria-label="Раздел скоро будет">
       <header class="section-header">
         <button class="back-button" type="button" data-back>Меню</button>
-        <h1 id="placeholder-title">Раздел</h1>
+        <div id="placeholder-section-heading" class="section-heading" data-section-title="Раздел" data-section-subtitle="активный профиль">
+          <span class="section-logo">Р</span>
+          <span><strong id="placeholder-title">Раздел</strong><small>Роботех · активный профиль</small></span>
+        </div>
       </header>
       <div class="placeholder-body">
         <img class="app-logo small" src="setka-icon.svg" alt="" />
